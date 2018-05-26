@@ -323,7 +323,22 @@ export class StaticSymbolResolver {
           // handle the symbols via export * directives.
           const resolvedModule = this.resolveModule(moduleExport.from, filePath);
           if (resolvedModule) {
+            if (!metadata['importAs'] && Object.keys(metadata['metadata']).length == 0) {
+              // handle re-export file for a secondary entry-point
+              var resolvedMetadata = this.getModuleMetadata(resolvedModule);
+              if (resolvedMetadata['importAs']) {
+                this.knownFileNameToModuleNames.set(filePath, resolvedMetadata['importAs']);
+              }
+            }
             const nestedExports = this.getSymbolsOf(resolvedModule);
+            if (!metadata['importAs'] && Object.keys(metadata['metadata']).length == 0) {
+              // handle re-export file for a secondary entry-point
+              var moduleName = this.summaryResolver.getKnownModuleName(resolvedModule);
+              if (moduleName) {
+                console.error('HERE', moduleName);
+                this.knownFileNameToModuleNames.set(filePath, moduleName);
+              }
+            }
             nestedExports.forEach((targetSymbol) => {
               const sourceSymbol = this.getStaticSymbol(filePath, targetSymbol.name);
               resolvedSymbols.push(this.createExport(sourceSymbol, targetSymbol));
