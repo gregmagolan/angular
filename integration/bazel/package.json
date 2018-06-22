@@ -20,8 +20,8 @@
     "@types/source-map": "0.5.1",
     "http-server": "0.11.1",
     "protractor": "file:../../node_modules/protractor",
-    "tsutils": "file:../../node_modules/tsutils",
-    "typescript": "file:../../node_modules/typescript"
+    "tsutils": "2.20.0",
+    "typescript": "2.7.2"
   },
   "scripts": {
     "postinstall": "ngc -p angular.tsconfig.json",

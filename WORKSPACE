@@ -6,9 +6,9 @@ workspace(name = "angular")
 
 http_archive(
     name = "build_bazel_rules_nodejs",
-    url = "https://github.com/gregmagolan/rules_nodejs/archive/bba77118cb18c7fdefa9cd4612d0477ab045a2c4.zip",
-    strip_prefix = "rules_nodejs-bba77118cb18c7fdefa9cd4612d0477ab045a2c4",
-    sha256 = "7ecb3c491b7d1f51dcff6460967453be6e9ca434ae4ef68ccf6df037e56307e1",
+    url = "https://github.com/gregmagolan/rules_nodejs/archive/08740c1e4b551377c7ca025428e0b81a28e7f3df.zip",
+    strip_prefix = "rules_nodejs-08740c1e4b551377c7ca025428e0b81a28e7f3df",
+    sha256 = "81cc5e0fb0aaf089308a7847cdb86fd8c3048c0a8e4d49c6ffa7710c36faf134",
 )
 
 http_archive(
@@ -81,6 +81,22 @@ http_archive(
 )
 
 #
+# Point Bazel to WORKSPACEs that live in subdirectories
+#
+
+local_repository(
+    name = "rxjs",
+    path = "node_modules/rxjs/src",
+)
+
+# Point to the integration test workspace just so that Bazel doesn't descend into it
+# when expanding the //... pattern
+local_repository(
+    name = "bazel_integration_test",
+    path = "integration/bazel",
+)
+
+#
 # Load and install our dependencies downloaded above.
 #
 
@@ -110,21 +126,9 @@ load("@build_bazel_rules_typescript//:defs.bzl", "ts_setup_workspace")
 
 ts_setup_workspace()
 
-#
-# Point Bazel to WORKSPACEs that live in subdirectories
-#
+load("@angular//:index.bzl", "ng_setup_workspace")
 
-local_repository(
-    name = "rxjs",
-    path = "node_modules/rxjs/src",
-)
-
-# Point to the integration test workspace just so that Bazel doesn't descend into it
-# when expanding the //... pattern
-local_repository(
-    name = "bazel_integration_test",
-    path = "integration/bazel",
-)
+ng_setup_workspace()
 
 #
 # Ask Bazel to manage these toolchain dependencies for us.

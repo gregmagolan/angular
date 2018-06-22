@@ -28,7 +28,7 @@ export function createWithEachNg1VersionFn(setNg1: typeof setAngularJSGlobal) {
             .reduce(
                 (prev, file) => prev.then(() => new Promise<void>((resolve, reject) => {
                                             const script = document.createElement('script');
-                                            script.src = `base/angular/node_modules/${file}`;
+                                            script.src = `base/angular_deps/node_modules/${file}`;
                                             script.onerror = reject;
                                             script.onload = () => {
                                               document.body.removeChild(script);

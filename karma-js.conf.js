@@ -102,6 +102,7 @@ module.exports = function(config) {
     // don't need this entire config file.
     proxies: {
       '/base/angular/': '/base/',
+      '/base/angular_deps/': '/base/',
     },
 
     reporters: ['internal-angular'],
