@@ -19,7 +19,7 @@ def ng_setup_workspace():
         package_json = "@angular//:package.json",
         yarn_lock = "@angular//:yarn.lock",
         data = ["@angular//:tools/yarn/check-yarn.js", "@angular//:tools/postinstall-patches.js"],
-        manual_build_file_contents = """package(default_visibility = ["//visibility:public"])
+        node_modules_filegroup = """
 filegroup(
     name = "node_modules",
     srcs = glob(["/".join([
