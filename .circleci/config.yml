@@ -27,13 +27,18 @@ var_5: &setup_bazel_remote_execution
     name: "Setup bazel RBE remote execution"
     command: openssl aes-256-cbc -d -in .circleci/gcp_token -k "$CI_REPO_NAME" -out /home/circleci/.gcp_credentials && echo "export GOOGLE_APPLICATION_CREDENTIALS=/home/circleci/.gcp_credentials" >> $BASH_ENV && sudo bash -c "cat .circleci/rbe-bazel.rc >> /etc/bazel.bazelrc"
 
+var_6: &setup_bazel_local_execution
+  run:
+    name: "Setup bazel local execution"
+    command: sudo cp .circleci/bazel.rc /etc/bazel.bazelrc
+
 # Settings common to each job
-var_6: &job_defaults
+var_7: &job_defaults
   working_directory: ~/ng
   docker:
   - image: *default_docker_image
 
-var_7: &start-xvfb
+var_8: &start-xvfb
   run:
     name: Running X virtual framebuffer
     command: Xvfb :99 -screen 0 1280x1024x24
@@ -93,7 +98,7 @@ jobs:
       - *setup_bazel_remote_execution
       - run: yarn bazel test //... --build_tag_filters=-ivy-only --test_tag_filters=-ivy-only,-local
       # Now run RBE incompatible tests locally.
-      - run: sudo cp .circleci/bazel.rc /etc/bazel.bazelrc
+      - *setup_bazel_local_execution
       - run: yarn bazel test //... --build_tag_filters=-ivy-only,local --test_tag_filters=-ivy-only,local
 
       # CircleCI will allow us to go back and view/download these artifacts from past builds.
@@ -124,6 +129,9 @@ jobs:
   # Temporary job to test what will happen when we flip the Ivy flag to true
   test_ivy_jit:
     <<: *job_defaults
+    docker:
+      # Needed because the e2e tests depends on Chrome being available
+      - image: *browsers_docker_image
     resource_class: xlarge
     steps:
       - checkout:
@@ -133,12 +141,20 @@ jobs:
       - *define_env_vars
       - *setup_circleci_bazel_config
       - *yarn_install
-      - *setup_bazel_remote_execution
 
+      # Setup remote execution and run RBE-compatible tests
+      - *setup_bazel_remote_execution
       - run: yarn test-ivy-jit //...
+
+      # Now run RBE incompatible tests locally
+      - *setup_bazel_local_execution
+      - run: yarn test-ivy-aot-local //...
 
   test_ivy_aot:
     <<: *job_defaults
+    docker:
+      # Needed because the e2e tests depends on Chrome being available
+      - image: *browsers_docker_image
     resource_class: xlarge
     steps:
       - checkout:
@@ -148,9 +164,14 @@ jobs:
       - *define_env_vars
       - *setup_circleci_bazel_config
       - *yarn_install
-      - *setup_bazel_remote_execution
 
+      # Setup remote execution and run RBE-compatible tests
+      - *setup_bazel_remote_execution
       - run: yarn test-ivy-aot //...
+
+      # Now run RBE incompatible tests locally
+      - *setup_bazel_local_execution
+      - run: yarn test-ivy-aot-local //...
 
   test_aio:
     <<: *job_defaults

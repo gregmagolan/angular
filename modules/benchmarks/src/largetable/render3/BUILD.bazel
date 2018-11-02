@@ -64,9 +64,8 @@ protractor_web_test(
     on_prepare = ":protractor.on_prepare.js",
     server = ":devserver",
     tags = [
-        "fixme-ivy-aot",
-        "fixme-ivy-jit",
         "ivy-only",
+        "local", # Depends on locally installed chrome
     ],
     deps = [
         "//modules/benchmarks/src/largetable:perf_lib",
