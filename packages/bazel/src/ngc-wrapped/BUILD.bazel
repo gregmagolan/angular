@@ -23,7 +23,8 @@ ts_library(
         "@ngdeps//@bazel/typescript",
         "@ngdeps//@types/node",
         "@ngdeps//tsickle",
-        "@ngdeps//typescript",
+        "@build_bazel_rules_typescript//internal:tsc_wrapped",
+        # "@ngdeps//typescript",
     ],
 )
 
