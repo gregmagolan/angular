@@ -15,8 +15,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # Fetch rules_nodejs so we can install our npm dependencies
 http_archive(
     name = "build_bazel_rules_nodejs",
-    sha256 = "1416d03823fed624b49a0abbd9979f7c63bbedfd37890ddecedd2fe25cccebc6",
-    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.18.6/rules_nodejs-0.18.6.tar.gz"],
+    urls = ["https://github.com/ecosia/rules_nodejs/archive/0f6201a9c70e7051881211c3855df9d493b06f02.zip"],
+    strip_prefix = "rules_nodejs-0f6201a9c70e7051881211c3855df9d493b06f02",
 )
 
 # Use a mock @npm repository while we are building angular from source
