@@ -165,7 +165,7 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
       private directiveMatcher: SelectorMatcher|null, private directives: Set<o.Expression>,
       private pipeTypeByName: Map<string, o.Expression>, private pipes: Set<o.Expression>,
       private _namespace: o.ExternalReference, private relativeContextFilePath: string,
-      private i18nUseExternalIds: boolean) {
+      private i18nUseExternalIds: boolean, private useClosure: boolean) {
     this._bindingScope = parentBindingScope.nestedScope(level);
 
     // Turn the relative context file path into an identifier by replacing non-alphanumeric
@@ -323,7 +323,8 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
     }
     const meta = metaFromI18nMessage(message);
     const content = getSerializedI18nContent(message);
-    const statements = getTranslationDeclStmts(_ref, content, meta, _params, transformFn);
+    const statements =
+        getTranslationDeclStmts(_ref, content, meta, _params, this.useClosure, transformFn);
     this.constantPool.statements.push(...statements);
     return _ref;
   }
@@ -807,7 +808,8 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
     const templateVisitor = new TemplateDefinitionBuilder(
         this.constantPool, this._bindingScope, this.level + 1, contextName, this.i18n,
         templateIndex, templateName, this.directiveMatcher, this.directives, this.pipeTypeByName,
-        this.pipes, this._namespace, this.fileBasedI18nSuffix, this.i18nUseExternalIds);
+        this.pipes, this._namespace, this.fileBasedI18nSuffix, this.i18nUseExternalIds,
+        this.useClosure);
 
     // Nested templates must not be visited until after their parent templates have completed
     // processing, so they are queued here until after the initial pass. Otherwise, we wouldn't

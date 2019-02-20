@@ -85,6 +85,7 @@ export class DecorationAnalyzer {
     new ComponentDecoratorHandler(
         this.reflectionHost, this.evaluator, this.scopeRegistry, this.isCore, this.resourceManager,
         this.rootDirs, /* defaultPreserveWhitespaces */ false, /* i18nUseExternalIds */ true,
+      /* i18nUseClosure */ false,
         this.moduleResolver, this.cycleAnalyzer, this.refEmitter),
     new DirectiveDecoratorHandler(
         this.reflectionHost, this.evaluator, this.scopeRegistry, this.isCore),

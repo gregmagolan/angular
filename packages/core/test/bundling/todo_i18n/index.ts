@@ -7,10 +7,10 @@
  */
 
 import '@angular/core/test/bundling/util/src/reflect_metadata';
+// TODO(ocombe): replace this with the real runtime i18n service configuration
+import './translations';
 import {CommonModule} from '@angular/common';
-import {Component, Injectable, NgModule, ViewEncapsulation, ɵmarkDirty as markDirty, ɵrenderComponent as renderComponent} from '@angular/core';
-// TODO(ocombe): replace this with the real runtime i18n service
-import {localize} from './translations';
+import {Component, Injectable, NgModule, ViewEncapsulation, ɵi18nLocalize as localize, ɵmarkDirty as markDirty, ɵrenderComponent as renderComponent} from '@angular/core';
 
 class Todo {
   editing: boolean;

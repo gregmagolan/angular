@@ -141,6 +141,7 @@ export class CompilerFacadeImpl implements CompilerFacade {
                                                         null,
           relativeContextFilePath: '',
           i18nUseExternalIds: true,
+          i18nUseClosure: false
         },
         constantPool, makeBindingParser(interpolationConfig));
     const preStatements = [...constantPool.statements, ...res.statements];

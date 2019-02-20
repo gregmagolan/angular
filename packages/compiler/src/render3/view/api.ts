@@ -190,6 +190,11 @@ export interface R3ComponentMetadata extends R3DirectiveMetadata {
   i18nUseExternalIds: boolean;
 
   /**
+   * Whether translation statements should use Closure `goog.getMsg` function or not.
+   */
+  i18nUseClosure: boolean;
+
+  /**
    * Overrides the default interpolation start and end delimiters ({{ and }}).
    */
   interpolation: InterpolationConfig;

@@ -55,7 +55,7 @@ describe('ComponentDecoratorHandler', () => {
 
     const handler = new ComponentDecoratorHandler(
         reflectionHost, evaluator, scopeRegistry, false, new NoopResourceLoader(), [''], false,
-        true, moduleResolver, cycleAnalyzer, refEmitter);
+        true, false, moduleResolver, cycleAnalyzer, refEmitter);
     const TestCmp = getDeclaration(program, 'entry.ts', 'TestCmp', ts.isClassDeclaration);
     const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
     if (detected === undefined) {

@@ -44,8 +44,8 @@ export class ComponentDecoratorHandler implements
       private scopeRegistry: LocalModuleScopeRegistry, private isCore: boolean,
       private resourceLoader: ResourceLoader, private rootDirs: string[],
       private defaultPreserveWhitespaces: boolean, private i18nUseExternalIds: boolean,
-      private moduleResolver: ModuleResolver, private cycleAnalyzer: CycleAnalyzer,
-      private refEmitter: ReferenceEmitter) {}
+      private i18nUseClosure: boolean, private moduleResolver: ModuleResolver,
+      private cycleAnalyzer: CycleAnalyzer, private refEmitter: ReferenceEmitter) {}
 
   private literalCache = new Map<Decorator, ts.ObjectLiteralExpression>();
   private elementSchemaRegistry = new DomElementSchemaRegistry();
@@ -299,7 +299,8 @@ export class ComponentDecoratorHandler implements
           wrapDirectivesAndPipesInClosure: false,  //
           animations,
           viewProviders,
-          i18nUseExternalIds: this.i18nUseExternalIds, relativeContextFilePath
+          i18nUseExternalIds: this.i18nUseExternalIds,
+          i18nUseClosure: this.i18nUseClosure, relativeContextFilePath
         },
         metadataStmt: generateSetClassMetadataCall(node, this.reflector, this.isCore),
         parsedTemplate: template.nodes,

@@ -256,7 +256,7 @@ export function compileComponentFromMetadata(
   const templateBuilder = new TemplateDefinitionBuilder(
       constantPool, BindingScope.ROOT_SCOPE, 0, templateTypeName, null, null, templateName,
       directiveMatcher, directivesUsed, meta.pipes, pipesUsed, R3.namespaceHTML,
-      meta.relativeContextFilePath, meta.i18nUseExternalIds);
+      meta.relativeContextFilePath, meta.i18nUseExternalIds, meta.i18nUseClosure);
 
   const templateFunctionExpression = templateBuilder.buildTemplateFunction(template.nodes, []);
 
@@ -396,6 +396,7 @@ export function compileComponentFromRender2(
         component.viewProviders.length > 0 ? new o.WrappedNodeExpr(component.viewProviders) : null,
     relativeContextFilePath: '',
     i18nUseExternalIds: true,
+    i18nUseClosure: false,
   };
   const res = compileComponentFromMetadata(meta, outputCtx.constantPool, bindingParser);
 

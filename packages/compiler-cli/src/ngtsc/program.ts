@@ -376,8 +376,8 @@ export class NgtscProgram implements api.Program {
       new ComponentDecoratorHandler(
           this.reflector, evaluator, scopeRegistry, this.isCore, this.resourceManager,
           this.rootDirs, this.options.preserveWhitespaces || false,
-          this.options.i18nUseExternalIds !== false, this.moduleResolver, this.cycleAnalyzer,
-          this.refEmitter),
+          this.options.i18nUseExternalIds !== false, !this.options.i18nInFile,
+          this.moduleResolver, this.cycleAnalyzer, this.refEmitter),
       new DirectiveDecoratorHandler(this.reflector, evaluator, scopeRegistry, this.isCore),
       new InjectableDecoratorHandler(
           this.reflector, this.isCore, this.options.strictInjectionParameters || false),

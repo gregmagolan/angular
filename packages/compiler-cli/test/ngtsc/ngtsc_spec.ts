@@ -1414,7 +1414,7 @@ describe('ngtsc behavioral tests', () => {
     expect(jsContents).toContain('text(1, " Template with whitespaces ");');
   });
 
-  it('should use proper default value for i18nUseExternalIds config param', () => {
+  it('should use proper default value for i18nUseExternalIds & i18nUseClosure config param', () => {
     env.tsconfig();  // default is `true`
     env.write(`test.ts`, `
       import {Component} from '@angular/core';
@@ -1427,6 +1427,7 @@ describe('ngtsc behavioral tests', () => {
     env.driveMain();
     const jsContents = env.getContents('test.js');
     expect(jsContents).toContain('i18n(1, MSG_EXTERNAL_8321000940098097247$$TEST_TS_0);');
+    expect(jsContents).toContain('goog.getMsg("Some text");');
   });
 
   it('should take i18nUseExternalIds config option into account', () => {
@@ -1442,6 +1443,22 @@ describe('ngtsc behavioral tests', () => {
     env.driveMain();
     const jsContents = env.getContents('test.js');
     expect(jsContents).toContain('i18n(1, MSG_TEST_TS_0);');
+  });
+
+  it('should set i18nUseClosure to false if i18nInFile config param is used', () => {
+    env.tsconfig({i18nInFile: 'some content'});
+    env.write(`test.ts`, `
+      import {Component} from '@angular/core';
+       @Component({
+        selector: 'test',
+        template: '<div i18n>Some text</div>'
+      })
+      class FooCmp {}
+    `);
+    env.driveMain();
+    const jsContents = env.getContents('test.js');
+    expect(jsContents).toContain('i18nLocalize("Some text");');
+    expect(jsContents).not.toContain('goog.getMsg');
   });
 
   it('@Component\'s `interpolation` should override default interpolation config', () => {

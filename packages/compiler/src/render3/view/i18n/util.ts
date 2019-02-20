@@ -11,6 +11,7 @@ import {toPublicName} from '../../../i18n/serializers/xmb';
 import * as html from '../../../ml_parser/ast';
 import {mapLiteral} from '../../../output/map_util';
 import * as o from '../../../output/output_ast';
+import {Identifiers as R3} from '../../r3_identifiers';
 
 
 /* Closure variables holding messages must be named `MSG_[A-Z0-9]+` */
@@ -48,17 +49,22 @@ export type I18nMeta = {
 };
 
 function i18nTranslationToDeclStmt(
-    variable: o.ReadVarExpr, message: string,
+    variable: o.ReadVarExpr, message: string, useClosure: boolean,
     params?: {[name: string]: o.Expression}): o.DeclareVarStmt {
   const args = [o.literal(message) as o.Expression];
   if (params && Object.keys(params).length) {
     args.push(mapLiteral(params, true));
   }
-  const fnCall = o.variable(GOOG_GET_MSG).callFn(args);
+  let fnCall: o.Expression;
+  if (useClosure) {
+    fnCall = o.variable(GOOG_GET_MSG).callFn(args);
+  } else {
+    fnCall = o.importExpr(R3.i18nLocalize).callFn(args);
+  }
   return variable.set(fnCall).toDeclStmt(o.INFERRED_TYPE, [o.StmtModifier.Final]);
 }
 
-// Converts i18n meta informations for a message (id, description, meaning)
+// Converts i18n meta information for a message (id, description, meaning)
 // to a JsDoc statement formatted as expected by the Closure compiler.
 function i18nMetaToDocStmt(meta: I18nMeta): o.JSDocCommentStmt|null {
   const tags: o.JSDocTag[] = [];
@@ -234,12 +240,13 @@ export function getTranslationConstPrefix(extra: string): string {
  * @param message Text message to be translated
  * @param meta Object that contains meta information (id, meaning and description)
  * @param params Object with placeholders key-value pairs
+ * @param useClosure Whether the translations use Closure or not
  * @param transformFn Optional transformation (post processing) function reference
  * @returns Array of Statements that represent a given translation
  */
 export function getTranslationDeclStmts(
     variable: o.ReadVarExpr, message: string, meta: I18nMeta,
-    params: {[name: string]: o.Expression} = {},
+    params: {[name: string]: o.Expression} = {}, useClosure: boolean,
     transformFn?: (raw: o.ReadVarExpr) => o.Expression): o.Statement[] {
   const statements: o.Statement[] = [];
   const docStatements = i18nMetaToDocStmt(meta);
@@ -247,7 +254,7 @@ export function getTranslationDeclStmts(
     statements.push(docStatements);
   }
   if (transformFn) {
-    statements.push(i18nTranslationToDeclStmt(variable, message, params));
+    statements.push(i18nTranslationToDeclStmt(variable, message, useClosure, params));
 
     // Closure Compiler doesn't allow non-goo.getMsg const names to start with `MSG_`,
     // so we update variable name prefix in case post processing is required, so we can
@@ -258,7 +265,7 @@ export function getTranslationDeclStmts(
     statements.push(
         variable.set(transformFn(raw)).toDeclStmt(o.INFERRED_TYPE, [o.StmtModifier.Final]));
   } else {
-    statements.push(i18nTranslationToDeclStmt(variable, message, params));
+    statements.push(i18nTranslationToDeclStmt(variable, message, useClosure, params));
   }
   return statements;
 }

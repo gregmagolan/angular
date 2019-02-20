@@ -114,6 +114,7 @@ export class Identifiers {
   static i18nEnd: o.ExternalReference = {name: 'ɵi18nEnd', moduleName: CORE};
   static i18nApply: o.ExternalReference = {name: 'ɵi18nApply', moduleName: CORE};
   static i18nPostprocess: o.ExternalReference = {name: 'ɵi18nPostprocess', moduleName: CORE};
+  static i18nLocalize: o.ExternalReference = {name: 'ɵi18nLocalize', moduleName: CORE};
 
   static load: o.ExternalReference = {name: 'ɵload', moduleName: CORE};
 
