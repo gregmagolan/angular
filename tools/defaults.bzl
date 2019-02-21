@@ -1,8 +1,8 @@
 """Re-export of some bazel rules with repository-wide defaults."""
 
-load("@npm_bazel_karma//:defs.bzl", _ts_web_test_suite = "ts_web_test_suite")
 load("@build_bazel_rules_nodejs//:defs.bzl", _jasmine_node_test = "jasmine_node_test", _nodejs_binary = "nodejs_binary", _npm_package = "npm_package")
-load("@npm_bazel_typescript//:defs.bzl", _ts_library = "ts_library")
+load("@npm_bazel_karma//:defs.bzl", _ts_web_test_suite = "ts_web_test_suite")
+load("@npm_bazel_typescript//:defs.bzl", _ts_devserver = "ts_devserver", _ts_library = "ts_library")
 load("//packages/bazel:index.bzl", _ng_module = "ng_module", _ng_package = "ng_package")
 load("//packages/bazel/src:ng_rollup_bundle.bzl", _ng_rollup_bundle = "ng_rollup_bundle")
 
@@ -228,5 +228,24 @@ def ng_rollup_bundle(deps = [], **kwargs):
     ]
     _ng_rollup_bundle(
         deps = deps,
+        **kwargs
+    )
+
+def ts_devserver(scripts = [], static_files = [], port = None, **kwargs):
+    """Default values for ts_devserver"""
+    scripts = scripts + [
+        "@ngdeps//node_modules/tslib:tslib.js",
+        "//tools/rxjs:rxjs_umd_modules",
+    ]
+    static_files = static_files + [
+        "@ngdeps//node_modules/zone.js:dist/zone.js",
+        "@ngdeps//node_modules/reflect-metadata:Reflect.js",
+    ]
+    if not port:
+        port = 4200
+    _ts_devserver(
+        port = port,
+        scripts = scripts,
+        static_files = static_files,
         **kwargs
     )
