@@ -19,8 +19,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "build_bazel_rules_nodejs",
     patch_args = ["-p1"],
-    # Patch https://github.com/bazelbuild/rules_nodejs/pull/903
-    patches = ["//tools:rollup_bundle_commonjs_ignoreGlobal.patch"],
+    # Patch https://github.com/bazelbuild/rules_nodejs/pull/1281
+    patches = ["//tools:rules_nodejs_linker.patch"],
     sha256 = "ad4be2c6f40f5af70c7edf294955f9d9a0222c8e2756109731b25f79ea2ccea0",
     urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.38.3/rules_nodejs-0.38.3.tar.gz"],
 )

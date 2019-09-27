@@ -27,9 +27,17 @@ nodejs_binary(
     install_source_map_support = False,
 )
 
-exports_files(["ng_package.bzl"])
+exports_files([
+    "ng_package.bzl",
+    "rollup.config.js",
+    "terser_config.default.json",
+])
 
 filegroup(
     name = "package_assets",
-    srcs = glob(["*.bzl"]) + ["BUILD.bazel"],
+    srcs = glob(["*.bzl"]) + [
+        "BUILD.bazel",
+        "rollup.config.js",
+        "terser_config.default.json",
+    ],
 )

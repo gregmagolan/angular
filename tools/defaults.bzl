@@ -1,17 +1,21 @@
 """Re-export of some bazel rules with repository-wide defaults."""
 
-load("@build_bazel_rules_nodejs//:defs.bzl", _nodejs_binary = "nodejs_binary", _npm_package = "npm_package", _rollup_bundle = "rollup_bundle")
+load("@build_bazel_rules_nodejs//:defs.bzl", "npm_package_bin", _nodejs_binary = "nodejs_binary", _npm_package = "npm_package")
 load("@npm_bazel_jasmine//:index.bzl", _jasmine_node_test = "jasmine_node_test")
 load("@npm_bazel_karma//:index.bzl", _karma_web_test = "karma_web_test", _karma_web_test_suite = "karma_web_test_suite", _ts_web_test = "ts_web_test", _ts_web_test_suite = "ts_web_test_suite")
 load("@npm_bazel_typescript//:index.bzl", _ts_library = "ts_library")
 load("//packages/bazel:index.bzl", _ng_module = "ng_module", _ng_package = "ng_package")
-load("//packages/bazel/src:ng_rollup_bundle.bzl", _ng_rollup_bundle = "ng_rollup_bundle")
+load("@npm_bazel_rollup//:index.bzl", _rollup_bundle = "rollup_bundle")
+load("@npm_bazel_terser//:index.bzl", "terser_minified")
+load("@npm//@babel/cli:index.bzl", "babel")
 
 _DEFAULT_TSCONFIG_TEST = "//packages:tsconfig-test"
 _INTERNAL_NG_MODULE_API_EXTRACTOR = "//packages/bazel/src/api-extractor:api_extractor"
 _INTERNAL_NG_MODULE_COMPILER = "//packages/bazel/src/ngc-wrapped"
 _INTERNAL_NG_MODULE_XI18N = "//packages/bazel/src/ngc-wrapped:xi18n"
 _INTERNAL_NG_PACKAGER_PACKAGER = "//packages/bazel/src/ng_package:packager"
+_INTERNAL_NG_PACKAGER_DEFALUT_TERSER_CONFIG_FILE = "//packages/bazel/src/ng_package:terser_config.default.json"
+_INTERNAL_NG_PACKAGER_DEFAULT_ROLLUP_CONFIG_TMPL = "//packages/bazel/src/ng_package:rollup.config.js"
 
 # Packages which are versioned together on npm
 ANGULAR_SCOPED_PACKAGES = ["@angular/%s" % p for p in [
@@ -145,6 +149,8 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
         license_banner = license_banner,
         replacements = PKG_GROUP_REPLACEMENTS,
         ng_packager = _INTERNAL_NG_PACKAGER_PACKAGER,
+        terser_config_file = _INTERNAL_NG_PACKAGER_DEFALUT_TERSER_CONFIG_FILE,
+        rollup_config_tmpl = _INTERNAL_NG_PACKAGER_DEFAULT_ROLLUP_CONFIG_TMPL,
         **kwargs
     )
 
@@ -299,22 +305,173 @@ def jasmine_node_test(deps = [], **kwargs):
         **kwargs
     )
 
-def ng_rollup_bundle(deps = [], **kwargs):
-    """Default values for ng_rollup_bundle"""
+def ng_rollup_bundle(name, deps = [], **kwargs):
+    """Rollup with Build Optimizer
+
+    This provides a variant of the [legacy rollup_bundle] rule that works better for Angular apps.
+
+    Runs [rollup_bundle], [terser_minified], [babel] and [brotli] for downleveling to es5
+    to produce a number of output bundles.
+
+    es2015 esm                    : "%{name}.es2015.js"
+    es2015 esm minified           : "%{name}.min.es2015.js"
+    es2015 esm minified (debug)   : "%{name}.min_debug.es2015.js"
+    es5 esm                       : "%{name}.js"
+    es5 esm minified              : "%{name}.min.js"
+    es5_esm_minified (compressed) : "%{name}.min.js.br",
+    es5 esm minified (debug)      : "%{name}.min_debug.js"
+
+    It registers `@angular-devkit/build-optimizer` as a rollup plugin, to get
+    better optimization. It also uses ESM5 format inputs, as this is what
+    build-optimizer is hard-coded to look for and transform.
+
+    [legacy rollup_bundle]: https://github.com/bazelbuild/rules_nodejs/blob/0.38.3/internal/rollup/rollup_bundle.bzl
+    [rollup_bundle]: https://bazelbuild.github.io/rules_nodejs/Rollup.html
+    [terser_minified]: https://bazelbuild.github.io/rules_nodejs/Terser.html
+    [babel]: https://babeljs.io/
+    [brotli]: https://brotli.org/
+    """
     deps = deps + [
         "@npm//tslib",
         "@npm//reflect-metadata",
     ]
-    _ng_rollup_bundle(
+    _rollup_bundle(
+        name = name + ".es2015",
+        config_file = "//tools:ng_rollup_bundle.config.js",
         deps = deps,
         **kwargs
     )
-
-def rollup_bundle(**kwargs):
-    """Default values for rollup_bundle"""
-    _rollup_bundle(
-        # code-splitting is turned on by default in nodejs rules 0.35.0
-        # we want to default to remain off
-        enable_code_splitting = False,
-        **kwargs
+    terser_minified(name = name + ".min.es2015", src = name + ".es2015", sourcemap = False)
+    native.filegroup(name = name + ".min.es2015.js", srcs = [name + ".min.es2015"])
+    terser_minified(name = name + ".min_debug.es2015", src = name + ".es2015", sourcemap = False, debug = True)
+    native.filegroup(name = name + ".min_debug.es2015.js", srcs = [name + ".min_debug.es2015"])
+    npm_package_bin(
+        name = "_%s_brotli" % name,
+        tool = "//tools/brotli-cli",
+        data = [name + ".min.es2015.js"],
+        outs = [name + ".min.es2015.js.br"],
+        args = [
+            "--output=$(location %s.min.es2015.js.br)" % name,
+            "$(location %s.min.es2015.js)" % name,
+        ],
     )
+    babel(
+        name = name,
+        outs = [
+            name + ".js",
+        ],
+        args = [
+            "$(location :%s.es2015.js)" % name,
+            "--no-babelrc",
+            "--compact",
+            "false",
+            "--source-maps",
+            "inline",
+            "--presets=@babel/preset-env",
+            "--out-file",
+            "$(location :%s.js)" % name,
+        ],
+        data = [
+            name + ".es2015.js",
+            "@npm//@babel/preset-env",
+        ],
+    )
+    terser_minified(name = name + ".min", src = name + "", sourcemap = False)
+    native.filegroup(name = name + ".min.js", srcs = [name + ".min"])
+    terser_minified(name = name + ".min_debug", src = name + "", sourcemap = False, debug = True)
+    native.filegroup(name = name + ".min_debug.js", srcs = [name + ".min_debug"])
+    npm_package_bin(
+        name = "_%s_es5_brotli" % name,
+        tool = "//tools/brotli-cli",
+        data = [name + ".min.js"],
+        outs = [name + ".min.js.br"],
+        args = [
+            "--output=$(location %s.min.js.br)" % name,
+            "$(location %s.min.js)" % name,
+        ],
+    )
+
+def rollup_bundle(name, testonly = False, **kwargs):
+    """A drop in replacement for the rules nodejs [legacy rollup_bundle].
+
+    Runs [rollup_bundle], [terser_minified] and [babel] for downleveling to es5
+    to produce a number of output bundles.
+
+    es2015 esm                  : "%{name}.es2015.js"
+    es2015 esm minified         : "%{name}.min.es2015.js"
+    es2015 esm minified (debug) : "%{name}.min_debug.es2015.js"
+    es5 esm                     : "%{name}.js"
+    es5 esm minified            : "%{name}.min.js"
+    es5 esm minified (debug)    : "%{name}.min_debug.js"
+    es5 umd                     : "%{name}.es5umd.js"
+    es5 umd minified            : "%{name}.min.es5umd.js"
+    es2015 umd                  : "%{name}.umd.js"
+    es2015 umd minified         : "%{name}.min.umd.js"
+
+    [legacy rollup_bundle]: https://github.com/bazelbuild/rules_nodejs/blob/0.38.3/internal/rollup/rollup_bundle.bzl
+    [rollup_bundle]: https://bazelbuild.github.io/rules_nodejs/Rollup.html
+    [terser_minified]: https://bazelbuild.github.io/rules_nodejs/Terser.html
+    [babel]: https://babeljs.io/
+    """
+
+    # esm
+    _rollup_bundle(name = name + ".es2015", testonly = testonly, **kwargs)
+    terser_minified(name = name + ".min.es2015", testonly = testonly, src = name + ".es2015", sourcemap = False)
+    native.filegroup(name = name + ".min.es2015.js", testonly = testonly, srcs = [name + ".min.es2015"])
+    terser_minified(name = name + ".min_debug.es2015", testonly = testonly, src = name + ".es2015", sourcemap = False, debug = True)
+    native.filegroup(name = name + ".min_debug.es2015.js", testonly = testonly, srcs = [name + ".min_debug.es2015"])
+    babel(
+        name = name + "",
+        testonly = testonly,
+        outs = [
+            name + ".js",
+        ],
+        args = [
+            "$(location :%s.es2015.js)" % name,
+            "--no-babelrc",
+            "--compact",
+            "false",
+            "--source-maps",
+            "inline",
+            "--presets=@babel/preset-env",
+            "--out-file",
+            "$(location :%s.js)" % name,
+        ],
+        data = [
+            name + ".es2015.js",
+            "@npm//@babel/preset-env",
+        ],
+    )
+    terser_minified(name = name + ".min", testonly = testonly, src = name + "", sourcemap = False)
+    native.filegroup(name = name + ".min.js", testonly = testonly, srcs = [name + ".min"])
+    terser_minified(name = name + ".min_debug", testonly = testonly, src = name + "", sourcemap = False, debug = True)
+    native.filegroup(name = name + ".min_debug.js", testonly = testonly, srcs = [name + ".min_debug"])
+
+    # umd
+    _rollup_bundle(name = name + ".umd", testonly = testonly, format = "umd", **kwargs)
+    terser_minified(name = name + ".min.umd", testonly = testonly, src = name + ".umd", sourcemap = False)
+    native.filegroup(name = name + ".min.umd.js", testonly = testonly, srcs = [name + ".min.umd"])
+    babel(
+        name = name + ".es5umd",
+        testonly = testonly,
+        outs = [
+            name + ".es5umd.js",
+        ],
+        args = [
+            "$(location :%s.umd.js)" % name,
+            "--no-babelrc",
+            "--compact",
+            "false",
+            "--source-maps",
+            "inline",
+            "--presets=@babel/preset-env",
+            "--out-file",
+            "$(location :%s.es5umd.js)" % name,
+        ],
+        data = [
+            name + ".umd.js",
+            "@npm//@babel/preset-env",
+        ],
+    )
+    terser_minified(name = name + ".min.es5umd", testonly = testonly, src = name + ".es5umd", sourcemap = False)
+    native.filegroup(name = name + ".min.es5umd.js", testonly = testonly, srcs = [name + ".min.es5umd"])

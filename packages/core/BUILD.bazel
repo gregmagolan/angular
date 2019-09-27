@@ -10,6 +10,7 @@ ng_module(
             "src/**/*.ts",
         ],
     ),
+    module_name = "@angular/core",
     deps = [
         "//packages:types",
         "//packages/core/src/compiler",

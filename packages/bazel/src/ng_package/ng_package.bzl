@@ -13,15 +13,8 @@ It packages your library following the Angular Package Format, see the
 specification of this format at https://goo.gl/jB3GVv
 """
 
-load("@build_bazel_rules_nodejs//internal/common:collect_es6_sources.bzl", "collect_es6_sources")
-load("@build_bazel_rules_nodejs//:providers.bzl", "JSNamedModuleInfo", "NpmPackageInfo")
-load(
-    "@build_bazel_rules_nodejs//internal/rollup:rollup_bundle.bzl",
-    "ROLLUP_ATTRS",
-    "ROLLUP_DEPS_ASPECTS",
-    "run_terser",
-    "write_rollup_config",
-)
+load("@build_bazel_rules_nodejs//:providers.bzl", "JSEcmaScriptModuleInfo", "JSNamedModuleInfo", "NpmPackageInfo", "node_modules_aspect")
+load("@build_bazel_rules_nodejs//internal/common:module_mappings.bzl", "get_module_mappings")
 load(
     "@build_bazel_rules_nodejs//internal/npm_package:npm_package.bzl",
     "NPM_PACKAGE_ATTRS",
@@ -38,6 +31,21 @@ def _debug(vars, *args):
         print("[ng_package.bzl]", args)
 
 _DEFAULT_NG_PACKAGER = "@npm//@angular/bazel/bin:packager"
+_DEFAULT_ROLLUP_CONFIG_TMPL = "@npm_angular_bazel//src/ng_package:rollup.config.js"
+_DEFALUT_TERSER_CONFIG_FILE = "@npm_angular_bazel//src/ng_package:terser_config.default.json"
+_DEFAULT_ROLLUP = "@npm//rollup/bin:rollup"
+_DEFAULT_TERSER = "@npm//terser/bin:terser"
+
+def _rollup_module_mappings_aspect_impl(target, ctx):
+    mappings = get_module_mappings(target.label, ctx.rule.attr)
+    return struct(rollup_module_mappings = mappings)
+
+rollup_module_mappings_aspect = aspect(
+    _rollup_module_mappings_aspect_impl,
+    attr_aspects = ["deps"],
+)
+
+_ROLLUP_MODULE_MAPPINGS_ATTR = "rollup_module_mappings"
 
 # Convert from some-dash-case to someCamelCase
 def _convert_dash_case_to_camel_case(s):
@@ -102,6 +110,163 @@ WELL_KNOWN_GLOBALS = {p: _global_name(p) for p in [
 # TODO(gregmagolan): clean this up
 _DEPSET_TYPE = "depset"
 
+def _collect_es6_sources(ctx):
+    """Returns a file tree containing only es6 files.
+
+    Args:
+        ctx: ctx.
+
+    Returns:
+        A file tree containing only production files.
+    """
+
+    non_rerooted_files = [d for d in ctx.files.deps if d.is_source]
+    for dep in ctx.attr.deps:
+        if JSEcmaScriptModuleInfo in dep:
+            non_rerooted_files += dep[JSEcmaScriptModuleInfo].sources.to_list()
+
+    rerooted_files = []
+    for file in non_rerooted_files:
+        path = file.short_path
+        if (path.startswith("../")):
+            path = "external/" + path[3:]
+
+        rerooted_file = ctx.actions.declare_file(
+            "%s.es6/%s" % (
+                ctx.label.name,
+                path.replace(".mjs", ".js"),
+            ),
+        )
+
+        # Cheap way to create an action that copies a file
+        ctx.actions.expand_template(
+            output = rerooted_file,
+            template = file,
+            substitutions = {},
+        )
+        rerooted_files += [rerooted_file]
+
+    return depset(direct = rerooted_files)
+
+def _terser(ctx, input, output):
+    """Runs terser on an input file.
+
+    Args:
+      ctx: Bazel rule execution context
+      input: input file
+      output: output file
+
+    Returns:
+      The sourcemap file
+    """
+
+    map_output = ctx.actions.declare_file(output.basename + ".map", sibling = output)
+
+    args = ctx.actions.args()
+
+    args.add(input.path)
+    args.add_all(["--output", output.path])
+
+    # Source mapping options are comma-packed into one argv
+    # see https://github.com/terser-js/terser#command-line-usage
+    source_map_opts = ["includeSources", "base=" + ctx.bin_dir.path]
+
+    # This option doesn't work in the config file, only on the CLI
+    args.add_all(["--source-map", ",".join(source_map_opts)])
+
+    args.add("--comments")
+
+    args.add_all(["--config-file", ctx.file.terser_config_file.path])
+
+    ctx.actions.run(
+        progress_message = "Optimizing JavaScript %s [terser]" % output.short_path,
+        executable = ctx.executable.terser,
+        inputs = [input, ctx.file.terser_config_file],
+        outputs = [output, map_output],
+        arguments = [args],
+    )
+
+    return map_output
+
+def _compute_node_modules_root(ctx):
+    """Computes the node_modules root from the node_modules and deps attributes.
+
+    Args:
+      ctx: the skylark execution context
+
+    Returns:
+      The node_modules root as a string
+    """
+    node_modules_root = None
+    for d in ctx.attr.deps:
+        if NpmPackageInfo in d:
+            possible_root = "/".join(["external", d[NpmPackageInfo].workspace, "node_modules"])
+            if not node_modules_root:
+                node_modules_root = possible_root
+            elif node_modules_root != possible_root:
+                fail("All npm dependencies need to come from a single workspace. Found '%s' and '%s'." % (node_modules_root, possible_root))
+    if not node_modules_root:
+        # there are no fine grained deps but we still need a node_modules_root even if its empty
+        node_modules_root = "external/npm/node_modules"
+    return node_modules_root
+
+# Avoid using non-normalized paths (workspace/../other_workspace/path)
+def _to_manifest_path(ctx, file):
+    if file.short_path.startswith("../"):
+        return file.short_path[3:]
+    else:
+        return ctx.workspace_name + "/" + file.short_path
+
+# Expand entry_point into runfiles and strip the file extension
+def _entry_point_path(ctx):
+    return _to_manifest_path(ctx, ctx.file.entry_point)[:-(len(ctx.file.entry_point.extension) + 1)]
+
+def write_rollup_config(ctx, root_dir, filename = "_%s.rollup.conf.js", output_format = "iife"):
+    """Generate a rollup config file.
+
+    Args:
+      ctx: Bazel rule execution context
+      root_dir: root directory for module resolution (defaults to None)
+      filename: output filename pattern (defaults to `_%s.rollup.conf.js`)
+      output_format: passed to rollup output.format option, e.g. "umd"
+
+    Returns:
+      The rollup config file. See https://rollupjs.org/guide/en#configuration-files
+    """
+    config = ctx.actions.declare_file(filename % ctx.label.name)
+
+    # build_file_path includes the BUILD.bazel file, transform here to only include the dirname
+    build_file_dirname = "/".join(ctx.build_file_path.split("/")[:-1])
+
+    mappings = dict()
+    all_deps = ctx.attr.deps + ctx.attr.srcs
+    for dep in all_deps:
+        if hasattr(dep, _ROLLUP_MODULE_MAPPINGS_ATTR):
+            for k, v in getattr(dep, _ROLLUP_MODULE_MAPPINGS_ATTR).items():
+                if k in mappings and mappings[k] != v:
+                    fail(("duplicate module mapping at %s: %s maps to both %s and %s" %
+                          (dep.label, k, mappings[k], v)), "deps")
+                mappings[k] = v
+
+    ctx.actions.expand_template(
+        output = config,
+        template = ctx.file.rollup_config_tmpl,
+        substitutions = {
+            "TMPL_banner_file": "\"%s\"" % ctx.file.license_banner.path if ctx.file.license_banner else "undefined",
+            "TMPL_global_name": ctx.attr.global_name if ctx.attr.global_name else ctx.label.name,
+            "TMPL_entry_point": _entry_point_path(ctx),
+            "TMPL_module_mappings": str(mappings),
+            "TMPL_node_modules_root": _compute_node_modules_root(ctx),
+            "TMPL_output_format": output_format,
+            "TMPL_root_dir": root_dir,
+            "TMPL_stamp_data": "\"%s\"" % ctx.version_file.path if ctx.version_file else "undefined",
+            "TMPL_target": str(ctx.label),
+            "TMPL_workspace_name": ctx.workspace_name,
+        },
+    )
+
+    return config
+
 def _rollup(ctx, bundle_name, rollup_config, entry_point, inputs, js_output, format = "es", module_name = "", include_tslib = False):
     map_output = ctx.actions.declare_file(js_output.basename + ".map", sibling = js_output)
 
@@ -153,8 +318,8 @@ def _rollup(ctx, bundle_name, rollup_config, entry_point, inputs, js_output, for
         mnemonic = "AngularPackageRollup",
         inputs = inputs.to_list() + other_inputs,
         outputs = [js_output, map_output],
-        executable = ctx.executable._rollup,
-        tools = [ctx.executable._rollup],
+        executable = ctx.executable.rollup,
+        tools = [ctx.executable.rollup],
         arguments = [args],
     )
     return struct(
@@ -206,7 +371,7 @@ def _filter_js_inputs(all_inputs):
 def _ng_package_impl(ctx):
     npm_package_directory = ctx.actions.declare_directory("%s.ng_pkg" % ctx.label.name)
 
-    esm_2015_files = _filter_out_generated_files(collect_es6_sources(ctx), "js")
+    esm_2015_files = _filter_out_generated_files(_collect_es6_sources(ctx), "js")
     esm5_sources = _filter_out_generated_files(flatten_esm5(ctx), "js")
 
     # These accumulators match the directory names where the files live in the
@@ -343,17 +508,16 @@ def _ng_package_impl(ctx):
             umd_output = ctx.outputs.umd
             min_output = ctx.outputs.umd_min
 
-        node_modules_files = _filter_js_inputs(ctx.files.node_modules)
-
         # Also include files from npm fine grained deps as inputs.
         # These deps are identified by the NpmPackageInfo provider.
+        node_modules_files = []
         for d in ctx.attr.deps:
             if NpmPackageInfo in d:
                 node_modules_files += _filter_js_inputs(d.files)
         esm5_rollup_inputs = depset(node_modules_files, transitive = [esm5_sources])
 
-        esm2015_config = write_rollup_config(ctx, [], "/".join([ctx.bin_dir.path, ctx.label.package, _esm2015_root_dir(ctx)]), filename = "_%s.rollup_esm2015.conf.js")
-        esm5_config = write_rollup_config(ctx, [], "/".join([ctx.bin_dir.path, ctx.label.package, esm5_root_dir(ctx)]), filename = "_%s.rollup_esm5.conf.js")
+        esm2015_config = write_rollup_config(ctx, "/".join([ctx.bin_dir.path, ctx.label.package, _esm2015_root_dir(ctx)]), filename = "_%s.rollup_esm2015.conf.js")
+        esm5_config = write_rollup_config(ctx, "/".join([ctx.bin_dir.path, ctx.label.package, esm5_root_dir(ctx)]), filename = "_%s.rollup_esm5.conf.js")
 
         fesm2015.append(_rollup(ctx, "fesm2015", esm2015_config, es2015_entry_point, depset(node_modules_files, transitive = [esm_2015_files]), fesm2015_output))
         fesm5.append(_rollup(ctx, "fesm5", esm5_config, es5_entry_point, esm5_rollup_inputs, fesm5_output))
@@ -371,11 +535,10 @@ def _ng_package_impl(ctx):
                 include_tslib = True,
             ),
         )
-        terser_sourcemap = run_terser(
+        terser_sourcemap = _terser(
             ctx,
             umd_output,
             min_output,
-            config_name = entry_point.replace("/", "_"),
         )
         bundles.append(struct(js = min_output, map = terser_sourcemap))
 
@@ -468,21 +631,99 @@ def _ng_package_impl(ctx):
         files = depset([package_dir]),
     )]
 
-DEPS_ASPECTS = [esm5_outputs_aspect]
+NG_PACKAGE_DEPS_ASPECTS = [esm5_outputs_aspect, rollup_module_mappings_aspect, node_modules_aspect]
 
-# Workaround skydoc bug which assumes ROLLUP_DEPS_ASPECTS is a str type
-[DEPS_ASPECTS.append(a) for a in ROLLUP_DEPS_ASPECTS]
+NG_PACKAGE_ATTRS = dict(NPM_PACKAGE_ATTRS, **{
+    "srcs": attr.label_list(
+        doc = """JavaScript source files from the workspace.
+        These can use ES2015 syntax and ES Modules (import/export)""",
+        allow_files = True,
+    ),
+    "entry_point": attr.label(
+        doc = """The starting point of the application, passed as the `--input` flag to rollup.
 
-NG_PACKAGE_ATTRS = dict(NPM_PACKAGE_ATTRS, **dict(ROLLUP_ATTRS, **{
-    "srcs": attr.label_list(allow_files = True),
-    "deps": attr.label_list(aspects = DEPS_ASPECTS),
+        If the entry JavaScript file belongs to the same package (as the BUILD file), 
+        you can simply reference it by its relative name to the package directory:
+
+        ```
+        ng_package(
+            name = "bundle",
+            entry_point = ":main.js",
+        )
+        ```
+
+        You can specify the entry point as a typescript file so long as you also include
+        the ts_library target in deps:
+
+        ```
+        ts_library(
+            name = "main",
+            srcs = ["main.ts"],
+        )
+
+        ng_package(
+            name = "bundle",
+            deps = [":main"]
+            entry_point = ":main.ts",
+        )
+        ```
+
+        The rule will use the corresponding `.js` output of the ts_library rule as the entry point.
+
+        If the entry point target is a rule, it should produce a single JavaScript entry file that will be passed to the nodejs_binary rule. 
+        For example:
+
+        ```
+        filegroup(
+            name = "entry_file",
+            srcs = ["main.js"],
+        )
+
+        ng_package(
+            name = "bundle",
+            entry_point = ":entry_file",
+        )
+        ```
+        """,
+        mandatory = True,
+        allow_single_file = True,
+    ),
+    "global_name": attr.string(
+        doc = """A name given to this package when referenced as a global variable.
+        This name appears in the bundle module incantation at the beginning of the file,
+        and governs the global symbol added to the global context (e.g. `window`) as a side-
+        effect of loading the UMD/IIFE JS bundle.
+
+        Rollup doc: "The variable name, representing your iife/umd bundle, by which other scripts on the same page can access it."
+
+        This is passed to the `output.name` setting in Rollup.""",
+    ),
+    "globals": attr.string_dict(
+        doc = """A dict of symbols that reference external scripts.
+        The keys are variable names that appear in the program,
+        and the values are the symbol to reference at runtime in a global context (UMD bundles).
+        For example, a program referencing @angular/core should use ng.core
+        as the global reference, so Angular users should include the mapping
+        `"@angular/core":"ng.core"` in the globals.""",
+        default = {},
+    ),
+    "license_banner": attr.label(
+        doc = """A .txt file passed to the `banner` config option of rollup.
+        The contents of the file will be copied to the top of the resulting bundles.
+        Note that you can replace a version placeholder in the license file, by using
+        the special version `0.0.0-PLACEHOLDER`. See the section on stamping in the README.""",
+        allow_single_file = [".txt"],
+    ),
+    "deps": attr.label_list(
+        doc = """Other rules that produce JavaScript outputs, such as `ts_library`.""",
+        aspects = NG_PACKAGE_DEPS_ASPECTS,
+    ),
     "data": attr.label_list(
         doc = "Additional, non-Angular files to be added to the package, e.g. global CSS assets.",
         allow_files = True,
     ),
     "include_devmode_srcs": attr.bool(default = False),
     "readme_md": attr.label(allow_single_file = [".md"]),
-    "globals": attr.string_dict(default = {}),
     "entry_point_name": attr.string(
         doc = "Name to use when generating bundle files for the primary entry-point.",
     ),
@@ -491,16 +732,34 @@ NG_PACKAGE_ATTRS = dict(NPM_PACKAGE_ATTRS, **dict(ROLLUP_ATTRS, **{
         executable = True,
         cfg = "host",
     ),
-    "_rollup": attr.label(
-        default = Label("@build_bazel_rules_nodejs//internal/rollup"),
+    "rollup": attr.label(
+        default = Label(_DEFAULT_ROLLUP),
         executable = True,
         cfg = "host",
     ),
-    "_rollup_config_tmpl": attr.label(
-        default = Label("@build_bazel_rules_nodejs//internal/rollup:rollup.config.js"),
+    "terser": attr.label(
+        executable = True,
+        cfg = "host",
+        default = Label(_DEFAULT_TERSER),
+    ),
+    "terser_config_file": attr.label(
+        doc = """A JSON file containing Terser minify() options.
+
+This is the file you would pass to the --config-file argument in terser's CLI.
+https://github.com/terser-js/terser#minify-options documents the content of the file.
+
+If `config_file` isn't supplied, Bazel will use a default config file.
+""",
+        allow_single_file = True,
+        # These defaults match how terser was run in the legacy built-in rollup_bundle rule.
+        # We keep them the same so it's easier for users to migrate.
+        default = Label(_DEFALUT_TERSER_CONFIG_FILE),
+    ),
+    "rollup_config_tmpl": attr.label(
+        default = Label(_DEFAULT_ROLLUP_CONFIG_TMPL),
         allow_single_file = True,
     ),
-}))
+})
 
 # Angular wants these named after the entry_point,
 # eg. for //packages/core it looks like "packages/core/index.js", we want

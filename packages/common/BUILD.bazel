@@ -10,6 +10,7 @@ ng_module(
             "src/**/*.ts",
         ],
     ),
+    module_name = "@angular/common",
     deps = [
         "//packages/core",
         "@npm//rxjs",
