@@ -20,6 +20,7 @@ load(
 load(
     "@build_bazel_rules_nodejs//:providers.bzl",
     _NpmPackageInfo = "NpmPackageInfo",
+    _JSEcmaScriptModuleInfo = "JSEcmaScriptModuleInfo",
     _js_ecma_script_module_info = "js_ecma_script_module_info",
     _js_named_module_info = "js_named_module_info",
     _node_modules_aspect = "node_modules_aspect",
@@ -40,5 +41,6 @@ DEFAULT_NG_COMPILER = "@npm//@angular/bazel/bin:ngc-wrapped"
 DEFAULT_NG_XI18N = "@npm//@angular/bazel/bin:xi18n"
 FLAT_DTS_FILE_SUFFIX = ".bundle.d.ts"
 TsConfigInfo = _TsConfigInfo
+JSEcmaScriptModuleInfo = _JSEcmaScriptModuleInfo
 js_ecma_script_module_info = _js_ecma_script_module_info
 js_named_module_info = _js_named_module_info

@@ -12,7 +12,7 @@ However we need to publish this flavor on NPM, so it's necessary to be able
 to produce it.
 """
 
-load(":external.bzl", "DEFAULT_NG_COMPILER")
+load(":external.bzl", "DEFAULT_NG_COMPILER", "JSEcmaScriptModuleInfo")
 
 # The provider downstream rules use to access the outputs
 ESM5Info = provider(
@@ -214,10 +214,32 @@ def flatten_esm5(ctx):
         rerooted_file = ctx.actions.declare_file("/".join([esm5_root_dir(ctx), path]))
         result.append(rerooted_file)
 
-        # print("copy", f.short_path, "to", rerooted_file.short_path)
         ctx.actions.expand_template(
             output = rerooted_file,
             template = f,
             substitutions = {},
         )
     return depset(result)
+
+def _esm5_sources(ctx):
+    sources = flatten_esm5(ctx)
+
+    return [
+        DefaultInfo(
+            files = sources,
+            runfiles = ctx.runfiles(transitive_files = sources),
+        ),
+        JSEcmaScriptModuleInfo(
+            direct_sources = depset(),
+            sources = sources,
+        )
+    ]
+
+esm5_sources = rule(
+    implementation = _esm5_sources,
+    attrs = {
+        "deps": attr.label_list(
+            aspects = [esm5_outputs_aspect],
+        ),
+    },
+)

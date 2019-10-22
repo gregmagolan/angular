@@ -5,6 +5,7 @@ load("@npm_bazel_jasmine//:index.bzl", _jasmine_node_test = "jasmine_node_test")
 load("@npm_bazel_karma//:index.bzl", _karma_web_test = "karma_web_test", _karma_web_test_suite = "karma_web_test_suite", _ts_web_test = "ts_web_test", _ts_web_test_suite = "ts_web_test_suite")
 load("@npm_bazel_typescript//:index.bzl", _ts_library = "ts_library")
 load("//packages/bazel:index.bzl", _ng_module = "ng_module", _ng_package = "ng_package")
+load("//packages/bazel/src:esm5.bzl", "esm5_sources")
 load("@npm_bazel_rollup//:index.bzl", _rollup_bundle = "rollup_bundle")
 load("@npm_bazel_terser//:index.bzl", "terser_minified")
 load("@npm//@babel/cli:index.bzl", "babel")
@@ -305,7 +306,7 @@ def jasmine_node_test(deps = [], **kwargs):
         **kwargs
     )
 
-def ng_rollup_bundle(name, deps = [], **kwargs):
+def ng_rollup_bundle(name, entry_point, deps = [], **kwargs):
     """Rollup with Build Optimizer
 
     This provides a variant of the [legacy rollup_bundle] rule that works better for Angular apps.
@@ -335,10 +336,17 @@ def ng_rollup_bundle(name, deps = [], **kwargs):
         "@npm//tslib",
         "@npm//reflect-metadata",
     ]
+    esm5_sources(
+        name = "esm5_sources",
+        deps = deps,
+    )
+    entry_point_label = entry_point
+    esm5_entry_point = Label("@%s//%s:%s" % (entry_point_label.workspace_name, entry_point_label.package, "esm5_sources.esm5/" + entry_point_label.name))
     _rollup_bundle(
         name = name + ".es2015",
         config_file = "//tools:ng_rollup_bundle.config.js",
-        deps = deps,
+        entry_point = esm5_entry_point,
+        deps = ":esm5_sources",
         **kwargs
     )
     terser_minified(name = name + ".min.es2015", src = name + ".es2015", sourcemap = False)
