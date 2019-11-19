@@ -282,7 +282,8 @@ jobs:
 
   test:
     executor:
-      name: default-executor
+      # Needed because the integration tests expect Chrome to be installed (e.g cli-hello-world)
+      name: browsers-executor
       resource_class: xlarge
     steps:
       - custom_attach_workspace
@@ -297,7 +298,8 @@ jobs:
   # Temporary job to test what will happen when we flip the Ivy flag to true
   test_ivy_aot:
     executor:
-      name: default-executor
+      # Needed because the integration tests expect Chrome to be installed (e.g cli-hello-world)
+      name: browsers-executor
       resource_class: xlarge
     steps:
       - custom_attach_workspace
