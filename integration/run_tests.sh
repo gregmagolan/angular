@@ -48,9 +48,23 @@ trap rm_cache EXIT
 
 for testDir in ${TEST_DIRS}; do
   [[ -d "$testDir" ]] || continue
-  echo "#################################"
+
+  # Skip all integration tests that are now handled by angular_integration_test except
+  # the tests that are tracked for payload size below.
+  if ([[ ! $testDir =~ cli-hello-world ]] && [[ ! $testDir == hello_world__closure ]]); then
+    echo ""
+    echo "######################################################################"
+    echo "NOT running integration test $testDir"
+    echo "This test is now run by bazel; see targets in /integration/BUILD.bazel"
+    echo "######################################################################"
+    continue
+  fi
+
+  echo ""
+  echo "######################################################################"
   echo "Running integration test $testDir"
-  echo "#################################"
+  echo "######################################################################"
+
   (
     cd $testDir
     rm -rf dist

@@ -4,6 +4,9 @@
 
 const { SpecReporter } = require('jasmine-spec-reporter');
 
+// Run in headless when under `bazel test` as tests may be parallized
+const headless = process.env['BAZEL_TARGET'] && !process.env['BUILD_WORKSPACE_DIRECTORY'];
+
 /**
  * @type { import("protractor").Config }
  */
@@ -15,12 +18,12 @@ exports.config = {
   capabilities: {
     browserName: 'chrome',
     chromeOptions: {
-      binary: process.env.CHROME_BIN,
-      args: ['--no-sandbox']
-    }
+      args: ['--no-sandbox'].concat(headless ? ['--headless', '--disable-gpu', '--disable-dev-shm-usage'] : []),
+    },
   },
   directConnect: true,
-  baseUrl: 'http://localhost:4200/',
+  // Port comes from package.json `e2e` script `ng e2e --port 4203`
+  baseUrl: 'http://localhost:4203/',
   framework: 'jasmine',
   jasmineNodeOpts: {
     showColors: true,

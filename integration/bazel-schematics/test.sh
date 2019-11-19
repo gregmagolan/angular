@@ -2,6 +2,17 @@
 
 set -eux -o pipefail
 
+# sedi makes `sed -i` work on both OSX & Linux
+# See https://stackoverflow.com/questions/2320564/i-need-my-sed-i-command-for-in-place-editing-to-work-with-both-gnu-sed-and-bsd
+function sedi () {
+  case $(uname) in
+    Darwin*) sedi=('-i' '') ;;
+    *) sedi='-i' ;;
+  esac
+
+  sed "${sedi[@]}" "$@"
+}
+
 function installLocalPackages() {
   # Install Angular packages that are built locally from HEAD.
   # This also gets around the bug whereby yarn caches local `file://` urls.
@@ -13,17 +24,24 @@ function installLocalPackages() {
   )
   local local_packages=()
   for package in "${packages[@]}"; do
-    local_packages+=("@angular/${package}@file:${pwd}/../../../dist/packages-dist/${package}")
+    local_packages+=("@angular/${package}@file:${pwd}/../node_modules/@angular/${package}")
   done
 
   # keep typescript, tslib, and @types/node versions in sync with the ones used in this repo
-  local_packages+=("typescript@file:${pwd}/../../../node_modules/typescript")
-  local_packages+=("tslib@file:${pwd}/../../../node_modules/tslib")
-  local_packages+=("@types/node@file:${pwd}/../../../node_modules/@types/node")
+  local_packages+=("typescript@file:${pwd}/../node_modules/typescript")
+  local_packages+=("tslib@file:${pwd}/../node_modules/tslib")
+  local_packages+=("@types/node@file:${pwd}/../node_modules/@types/node")
 
   yarn add --ignore-scripts --silent "${local_packages[@]}"
 }
 
+function patchKarmaConfForBazelCI() {
+  sedi "s#browsers\: \['Chrome'\],#browsers\: \[process.env\['BAZEL_TARGET'\] \&\& !process.env\['BUILD_WORKSPACE_DIRECTORY'\] ? 'ChromeHeadless' : 'Chrome'\], // Run in headless when under \`bazel test\` as tests may be parallized#" ./karma.conf.js
+}
+
+function patchProtractorConfForBazelCI() {
+  sedi "s#browserName\: 'chrome'#browserName\: 'chrome', chromeOptions\: \{ args: process.env\['BAZEL_TARGET'\] \&\& !process.env\['BUILD_WORKSPACE_DIRECTORY'\] ? \['--headless', '--disable-gpu', '--disable-dev-shm-usage'\] : \[\], }, // Run in headless when under \`bazel test\` as tests may be parallized#" ./e2e/protractor.conf.js
+}
 
 function testBazel() {
   # Set up
@@ -33,6 +51,8 @@ function testBazel() {
   # Create project
   ng new demo --collection=@angular/bazel --routing --skip-git --skip-install --style=scss
   cd demo
+  patchKarmaConfForBazelCI
+  patchProtractorConfForBazelCI
   installLocalPackages
   ng generate component widget --style=css
   ng build
@@ -52,7 +72,7 @@ function testNonBazel() {
   # disable CLI's version check (if version is 0.0.0, then no version check happens)
   yarn --cwd node_modules/@angular/cli version --new-version 0.0.0 --no-git-tag-version
   # re-add build-angular
-  yarn add --dev file:../../../node_modules/@angular-devkit/build-angular
+  yarn add --dev file:../node_modules/@angular-devkit/build-angular
   yarn webdriver-manager update --gecko=false --standalone=false ${CI_CHROMEDRIVER_VERSION_ARG:---versions.chrome 2.45}
   ng build --progress=false
   ng test --progress=false --watch=false

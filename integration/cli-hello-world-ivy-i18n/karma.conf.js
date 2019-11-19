@@ -1,6 +1,9 @@
 // Karma configuration file, see link for more information
 // https://karma-runner.github.io/1.0/config/configuration-file.html
 
+// Run in headless when under `bazel test` as tests may be parallized
+const headless = process.env['BAZEL_TARGET'] && !process.env['BUILD_WORKSPACE_DIRECTORY'];
+
 module.exports = function (config) {
   config.set({
     basePath: '',
@@ -21,11 +24,11 @@ module.exports = function (config) {
       fixWebpackSourcePaths: true
     },
     reporters: ['progress', 'kjhtml'],
-    port: 9876,
+    port: 9879,
     colors: true,
     logLevel: config.LOG_INFO,
     autoWatch: true,
-    browsers: ['Chrome'],
+    browsers: [headless ? 'ChromeHeadless' : 'Chrome'],
     singleRun: false,
     restartOnFileChange: true
   });

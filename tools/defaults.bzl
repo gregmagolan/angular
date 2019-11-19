@@ -1,16 +1,17 @@
 """Re-export of some bazel rules with repository-wide defaults."""
 
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 load("@build_bazel_rules_nodejs//:index.bzl", _nodejs_binary = "nodejs_binary", _npm_package = "npm_package")
 load("@npm_bazel_jasmine//:index.bzl", _jasmine_node_test = "jasmine_node_test")
 load("@npm_bazel_karma//:index.bzl", _karma_web_test = "karma_web_test", _karma_web_test_suite = "karma_web_test_suite")
+load("@npm_bazel_rollup//:index.bzl", _rollup_bundle = "rollup_bundle")
+load("@npm_bazel_terser//:index.bzl", "terser_minified")
 load("@npm_bazel_typescript//:index.bzl", _ts_devserver = "ts_devserver", _ts_library = "ts_library")
 load("@npm_bazel_protractor//:index.bzl", _protractor_web_test_suite = "protractor_web_test_suite")
+load("@npm//typescript:index.bzl", "tsc")
 load("//packages/bazel:index.bzl", _ng_module = "ng_module", _ng_package = "ng_package")
 load("//tools/ng_rollup_bundle:ng_rollup_bundle.bzl", _ng_rollup_bundle = "ng_rollup_bundle")
 load("//tools:ng_benchmark.bzl", _ng_benchmark = "ng_benchmark")
-load("@npm_bazel_rollup//:index.bzl", _rollup_bundle = "rollup_bundle")
-load("@npm_bazel_terser//:index.bzl", "terser_minified")
-load("@npm//typescript:index.bzl", "tsc")
 
 _DEFAULT_TSCONFIG_TEST = "//packages:tsconfig-test"
 _INTERNAL_NG_MODULE_API_EXTRACTOR = "//packages/bazel/src/api-extractor:api_extractor"
@@ -154,6 +155,7 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
     deps = deps + [
         "@npm//tslib",
     ]
+    visibility = kwargs.pop("visibility", None)
 
     _ng_package(
         name = name,
@@ -165,15 +167,39 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
         terser_config_file = _INTERNAL_NG_PACKAGE_DEFALUT_TERSER_CONFIG_FILE,
         rollup_config_tmpl = _INTERNAL_NG_PACKAGE_DEFAULT_ROLLUP_CONFIG_TMPL,
         rollup = _INTERNAL_NG_PACKAGE_DEFAULT_ROLLUP,
+        visibility = visibility,
         **kwargs
+    )
+
+    pkg_tar(
+        name = name + "_archive",
+        srcs = [":%s" % name],
+        extension = "tar.gz",
+        strip_prefix = "./%s" % name,
+        # should not be build unless it is a dependency of another rule
+        tags = ["manual"],
+        visibility = visibility,
     )
 
 def npm_package(name, replacements = {}, **kwargs):
     """Default values for npm_package"""
+    visibility = kwargs.pop("visibility", None)
+
     _npm_package(
         name = name,
         replacements = dict(replacements, **PKG_GROUP_REPLACEMENTS),
+        visibility = visibility,
         **kwargs
+    )
+
+    pkg_tar(
+        name = name + "_archive",
+        srcs = [":%s" % name],
+        extension = "tar.gz",
+        strip_prefix = "./%s" % name,
+        # should not be build unless it is a dependency of another rule
+        tags = ["manual"],
+        visibility = visibility,
     )
 
 def karma_web_test(bootstrap = [], deps = [], data = [], runtime_deps = [], **kwargs):
