@@ -1,13 +1,5 @@
 load("//tools/npm_integration_test:npm_integration_test.bzl", "angular_integration_test")
 
-filegroup(
-    name = "cli_hello_world_files",
-    srcs = glob(
-        include = ["cli-hello-world/**"],
-        exclude = ["cli-hello-world/node_modules/**"],
-    ),
-)
-
 angular_integration_test(
     name = "cli_hello_world_test",
     commands = [
@@ -48,5 +40,8 @@ angular_integration_test(
         "@npm//:angular_cli_archive": "@angular/cli",
         "@npm//:types_node_archive": "@types/node",
     },
-    test_files = ":cli_hello_world_files",
+    test_files = glob(
+        include = ["cli-hello-world/**"],
+        exclude = ["cli-hello-world/node_modules/**"],
+    ),
 )
