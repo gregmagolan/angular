@@ -147,17 +147,6 @@ class TestRunner {
       }
       log(`overriding '${key}' npm package with 'file:${path}' in package.json file`);
     }
-    // replace other replacements
-    for (const key of Object.keys(this.config.packageJsonRepacements)) {
-      const value = config.packageJsonRepacements[key];
-      const regex = new RegExp(`\"${key}\"\\s*\:\\s*\"[^"]+`);
-      const replacement = `"${key}": "${value}`;
-      contents = contents.replace(regex, replacement);
-      if (!contents.includes(replacement)) {
-        fail(`package.json replacement for npm package '${key}' failed!`);
-      }
-      log(`overriding '${key}' npm package with '${value}' in package.json file`);
-    }
     // check packages
     const failedPackages = [];
     for (const key of this.config.checkNpmPackages) {
