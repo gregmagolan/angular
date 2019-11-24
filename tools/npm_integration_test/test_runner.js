@@ -10,7 +10,6 @@ const spawnSync = require('child_process').spawnSync;
 const fs = require('fs');
 const path = require('path');
 const tmp = require('tmp');
-const tar = require('tar');
 
 const VERBOSE_LOGS = !!process.env['VERBOSE_LOGS'];
 
@@ -78,7 +77,7 @@ function rootDirectory(files) {
 }
 
 /**
- * Utility function to copy a list of files & folders under a common root to a destination folder.
+ * Utility function to copy a list of files under a common root to a destination folder.
  */
 function copy(files, root, to) {
   for (src of files) {
@@ -97,34 +96,12 @@ function copy(files, root, to) {
       fs.chmodSync(dest, FILE_PERMISSIONS);
       log_verbose(`copying file ${src} -> ${dest}`);
     } else {
-      log_verbose(`copying directory ${src} -> ${to}`);
-      copyFolder(src, to);
+      fail('directories in test_files not supported');
     }
   }
   return to;
 }
 
-/**
- * Utility function to copy all files in a folder recursively.
- */
-function copyFolder(from, to) {
-  fs.readdirSync(from).forEach(element => {
-    if (element == 'node_modules') {
-      // don't copy nested node_modules
-      return;
-    }
-    const src = path.posix.join(from, element);
-    const dest = path.posix.join(to, element);
-    if (fs.statSync(src).isFile()) {
-      mkdirp(path.dirname(dest));
-      fs.copyFileSync(src, dest);
-      fs.chmodSync(dest, FILE_PERMISSIONS);
-      log_verbose(`copying file ${src} -> ${dest}`);
-    } else {
-      copyFolder(src, dest);
-    }
-  });
-}
 class TestRunner {
   constructor(config, args) {
     this.config = config;
@@ -132,14 +109,15 @@ class TestRunner {
     this.successful = 0;
     this._setupRunfilesManifest();
     this._setupTestFiles();
-    this._setupNpmPackages();
     this._patchPackageJson();
   }
 
   run() {
     for (const command of this.config.commands) {
       const split = command.split(' ');
-      const binary = this._resolveFile(split[0].replace(/^external\//, ''));
+      const binary = split[0].startsWith('./') ?
+          split[0] :
+          this._resolveFile(split[0].replace(/^external\//, ''));
       const args = split.slice(1);
       log(`running test command '${binary} ${args.join(' ')}' in ${this.testRoot}`);
       const spawnedProcess = spawnSync(binary, args, {cwd: this.testRoot, stdio: 'inherit'});
@@ -159,8 +137,8 @@ class TestRunner {
     }
     let contents = fs.readFileSync(packageJson, {encoding: 'utf-8'});
     // replace npm packages
-    for (const key of Object.keys(this.npmPackages)) {
-      const path = this.npmPackages[key];
+    for (const key of Object.keys(this.config.npmPackages)) {
+      const path = this._resolveFile(this.config.npmPackages[key]);
       const regex = new RegExp(`\"${key}\"\\s*\:\\s*\"[^"]+`);
       const replacement = `"${key}": "file:${path}`;
       contents = contents.replace(regex, replacement);
@@ -197,42 +175,6 @@ class TestRunner {
   }
 
   /** @internal */
-  _setupNpmPackages() {
-    this.npmPackages = {};
-    for (const key of Object.keys(this.config.npmPackages)) {
-      // don't copy nested node_modules
-      const files = this.config.npmPackages[key].filter(f => !f.startsWith('node_modules/'));
-      if (!files.length) {
-        error(`no files in npm package '${key}'`);
-      }
-      log_verbose(`copying npm package '${key}' to tmp`);
-      const tmp = this._copyToTmp(files);
-      switch (this.config.npmPackageFileFormat) {
-        case 'directory':
-          this.npmPackages[key] = tmp;
-          log(`npm package '${key}' copied to tmp folder ${tmp}`);
-          break;
-        case 'tar':
-        case 'tgz':
-          const archive = path.posix.join(tmp, `pkg.${this.config.npmPackageFileFormat}`);
-          tar.create(
-              {
-                file: archive,
-                gzip: this.config.npmPackageFileFormat === 'tgz' ? {level: 0} : false,
-                sync: true,
-                cwd: tmp
-              },
-              ['.']);
-          this.npmPackages[key] = archive;
-          log(`npm package '${key}' archived to ${this.config.npmPackageFileFormat} ${archive}`);
-          break;
-        default:
-          fail(`unsupported npm_package_file_format ${this.config.npmPackageFileFormat}`);
-      }
-    }
-  }
-
-  /** @internal */
   _setupTestFiles() {
     if (!this.config.testFiles.length) {
       fail(`no test files`);
@@ -262,11 +204,8 @@ class TestRunner {
   /** @internal */
   _copyToTmp(files) {
     const resolved = files.map(f => this._resolveFile(f));
-    const root = resolved.length > 1 ? rootDirectory(resolved) :
-                                       (isFile(resolved) ? path.dirname(resolved) : resolved);
     return copy(
-        resolved, root,
-        tmp.dirSync({keep: this.config.debug, unsafeCleanup: !this.config.debug}).name);
+        resolved, rootDirectory(resolved), tmp.dirSync({keep: false, unsafeCleanup: true}).name);
   }
 
   /** @internal */
@@ -331,6 +270,6 @@ if (result) {
   }
 }
 if (config.debug) {
-  log(`test may be re-run manually under ${testRunner.testRoot} (all tmp folders created for test are preserved)`);
+  log(`test may be re-run manually under ${testRunner.testRoot}`);
 }
 process.exit(result);

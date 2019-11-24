@@ -163,7 +163,6 @@
     "rewire": "2.5.2",
     "sauce-connect": "https://saucelabs.com/downloads/sc-4.5.1-linux.tar.gz",
     "semver": "^6.3.0",
-    "tar": "5.0.5",
     "tslint-eslint-rules": "4.1.1",
     "tslint-no-toplevel-property-access": "0.0.2",
     "tsutils": "2.27.2",

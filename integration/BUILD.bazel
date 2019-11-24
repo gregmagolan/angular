@@ -11,8 +11,11 @@ filegroup(
 angular_integration_test(
     name = "cli_hello_world_test",
     commands = [
+        # Use hermetic version of yarn inside of the test
         "$(location @nodejs//:yarn_bin) install",
         "$(location @nodejs//:yarn_bin) test",
+        # Commands may also run node programs from node_modules directly such as "./node_modules/.bin/foo".
+        "./node_modules/.bin/uuid",
     ],
     # CI_CHROMEDRIVER_VERSION_ARG is used in post-install to configure
     # which version of chrome driver webdriver-manager downloads. The version
@@ -27,23 +30,23 @@ angular_integration_test(
         "@nodejs//:yarn_files",
     ],
     npm_packages = {
-        "//packages/animations:npm_package": "@angular/animations",
-        "//packages/common:npm_package": "@angular/common",
-        "//packages/compiler:npm_package": "@angular/compiler",
-        "//packages/compiler-cli:npm_package": "@angular/compiler-cli",
-        "//packages/core:npm_package": "@angular/core",
-        "//packages/forms:npm_package": "@angular/forms",
-        "//packages/language-service:npm_package": "@angular/language-service",
-        "//packages/platform-browser:npm_package": "@angular/platform-browser",
-        "//packages/platform-browser-dynamic:npm_package": "@angular/platform-browser-dynamic",
-        "//packages/router:npm_package": "@angular/router",
-        "//packages/zone.js:npm_package": "zone.js",
-        "@npm//typescript": "typescript",
-        "@npm//rxjs": "rxjs",
-        "@npm//tslib": "tslib",
-        "@npm//protractor": "protractor",
-        "@npm//@angular/cli": "@angular/cli",
-        "@npm//@types/node": "@types/node",
+        "//packages/animations:npm_package_archive": "@angular/animations",
+        "//packages/common:npm_package_archive": "@angular/common",
+        "//packages/compiler:npm_package_archive": "@angular/compiler",
+        "//packages/compiler-cli:npm_package_archive": "@angular/compiler-cli",
+        "//packages/core:npm_package_archive": "@angular/core",
+        "//packages/forms:npm_package_archive": "@angular/forms",
+        "//packages/language-service:npm_package_archive": "@angular/language-service",
+        "//packages/platform-browser:npm_package_archive": "@angular/platform-browser",
+        "//packages/platform-browser-dynamic:npm_package_archive": "@angular/platform-browser-dynamic",
+        "//packages/router:npm_package_archive": "@angular/router",
+        "//packages/zone.js:npm_package_archive": "zone.js",
+        "@npm//:typescript_archive": "typescript",
+        "@npm//:rxjs_archive": "rxjs",
+        "@npm//:tslib_archive": "tslib",
+        "@npm//:protractor_archive": "protractor",
+        "@npm//:angular_cli_archive": "@angular/cli",
+        "@npm//:types_node_archive": "@types/node",
     },
     test_files = ":cli_hello_world_files",
 )

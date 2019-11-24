@@ -155,6 +155,7 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
     deps = deps + [
         "@npm//tslib",
     ]
+    visibility = kwargs.pop("visibility", None)
 
     _ng_package(
         name = name,
@@ -166,6 +167,7 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
         terser_config_file = _INTERNAL_NG_PACKAGE_DEFALUT_TERSER_CONFIG_FILE,
         rollup_config_tmpl = _INTERNAL_NG_PACKAGE_DEFAULT_ROLLUP_CONFIG_TMPL,
         rollup = _INTERNAL_NG_PACKAGE_DEFAULT_ROLLUP,
+        visibility = visibility,
         **kwargs
     )
 
@@ -176,23 +178,28 @@ def ng_package(name, readme_md = None, license_banner = None, deps = [], **kwarg
         strip_prefix = "./%s" % name,
         # should not be build unless it is a dependency of another rule
         tags = ["manual"],
+        visibility = visibility,
     )
 
 def npm_package(name, replacements = {}, **kwargs):
     """Default values for npm_package"""
+    visibility = kwargs.pop("visibility", None)
+
     _npm_package(
         name = name,
         replacements = dict(replacements, **PKG_GROUP_REPLACEMENTS),
+        visibility = visibility,
         **kwargs
     )
 
     pkg_tar(
-        name = name + ".tar.gz",
+        name = name + "_archive",
         srcs = [":%s" % name],
         extension = "tar.gz",
         strip_prefix = "./%s" % name,
         # should not be build unless it is a dependency of another rule
         tags = ["manual"],
+        visibility = visibility,
     )
 
 def karma_web_test(bootstrap = [], deps = [], data = [], runtime_deps = [], **kwargs):

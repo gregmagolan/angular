@@ -54,7 +54,6 @@ module.exports = {{
     testFiles: [ {TMPL_test_files} ],
     commands: [ {TMPL_commands} ],
     npmPackages: {{ {TMPL_npm_packages} }},
-    npmPackageFileFormat: '{TMPL_npm_package_file_format}',
     checkNpmPackages: [ {TMPL_check_npm_packages} ],
     packageJsonRepacements: {{ {TMPL_package_json_replacements} }},
     envVars: {{ {TMPL_env_vars} }},
@@ -63,8 +62,7 @@ module.exports = {{
 """.format(
             TMPL_test_files = ", ".join(["'%s'" % _to_manifest_path(ctx, f) for f in ctx.files.test_files]),
             TMPL_commands = ", ".join(["'%s'" % s for s in commands]),
-            TMPL_npm_packages = ", ".join(["'%s': [%s]" % (ctx.attr.npm_packages[n], ", ".join(["'%s'" % _to_manifest_path(ctx, f) for f in n.files.to_list()])) for n in ctx.attr.npm_packages]),
-            TMPL_npm_package_file_format = ctx.attr.npm_package_file_format,
+            TMPL_npm_packages = ", ".join(["'%s': '%s'" % (ctx.attr.npm_packages[n], _to_manifest_path(ctx, n.files.to_list()[0])) for n in ctx.attr.npm_packages]),
             TMPL_check_npm_packages = ", ".join(["'%s'" % s for s in ctx.attr.check_npm_packages]),
             TMPL_package_json_replacements = ", ".join(["'%s': '%s'" % (f, ctx.attr.package_json_replacements[f]) for f in ctx.attr.package_json_replacements]),
             TMPL_env_vars = ", ".join(["'%s': '%s'" % (k, env_vars[k]) for k in env_vars]),
@@ -176,15 +174,15 @@ and the test is not run. This is used to configure the test folder for local tes
     ),
     "npm_packages": attr.label_keyed_string_dict(
         doc = """A label keyed string dictionary of npm package replacements to make in the workspace-under-test's
-package.json with generated npm package targets. The targets should be npm_package rules.
+package.json with npm package targets. The targets should be pkg_tar tar.gz archives.
 
 For example,
 ```
 npm_packages = {
-    "//packages/common:npm_package": "@angular/common",
-    "//packages/compiler:npm_package": "@angular/compiler",
-    "//packages/compiler-cli:npm_package": "@angular/compiler-cli",
-    "//packages/core:npm_package": "@angular/core",
+    "//packages/common:npm_package_archive": "@angular/common",
+    "//packages/compiler:npm_package_archive": "@angular/compiler",
+    "//packages/compiler-cli:npm_package_archive": "@angular/compiler-cli",
+    "//packages/core:npm_package_archive": "@angular/core",
 }
 ```""",
         allow_files = True,
@@ -212,28 +210,6 @@ This can be used for integration testing against multiple external npm dependenc
     "3.4.x",
     "3.5.x",
 ]]```""",
-    ),
-    "npm_package_file_format": attr.string(
-        doc = """Controls how npm_packages are referenced in the test's package.json file.
-
-tgz - npm_packages are archived into a `.tgz` file in a tmp folder. The reference in the modified package.json
-      `"pkg_name": "file:/path/to/tmp/pkg.tgz"`. GZip compression level is set to zero. This is the recommended file
-      format that works with both yarn and npm.
-tar - npm_packages are archived into a `.tar` file in a tmp folder. The reference in the modified package.json
-      `"pkg_name": "file:/path/to/tmp/pkg.tar"`. This format works with npm but not all versions of yarn can handle
-      extracting a tar file.
-directory - npm_packages are copied to a tmp folder and referenced as a directory. The reference in the modified package.json
-      `"pkg_name": "file:/path/to/tmp"`. This format works with yarn but npm may have issues as by default (since npm 5)
-      directory `file:` references are symlinked instead of copied which leads to file permissions issues with npm install.
-      For more details on npm 5's symlinking behavior when installing a package directory see the list of Breaking Changes in the
-      npm v5.0.0 release blog post https://blog.npmjs.org/post/161081169345/v500. The PR that makes the change is
-      https://github.com/npm/npm/pull/15900. The following blog post also touches on the subject
-      https://medium.com/@alex_young/npm-5-and-file-urls-3c3631f7367c.
-
-Defaults to 'tgz' which works with both yarn and npm.
-""",
-        values = ["tgz", "tar", "directory"],
-        default = "tgz",
     ),
     "test_files": attr.label(
         doc = """A filegroup of all files necessary to run the test.""",
