@@ -26,8 +26,8 @@ exports.config = {
     './src/**/*.e2e-spec.ts'
   ],
   capabilities: {
-    'browserName': 'chrome',
-    'chromeOptions': {
+    browserName: 'chrome',
+    chromeOptions: {
       args: headless ? ['--headless', '--disable-gpu', '--disable-dev-shm-usage'] : [],
     },
   },

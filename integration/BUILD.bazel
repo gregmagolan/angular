@@ -1,47 +1,39 @@
-load("//tools/npm_integration_test:npm_integration_test.bzl", "angular_integration_test")
+load(":angular_integration_test.bzl", "angular_integration_test")
 
+[
+    angular_integration_test(
+        name = test_folder + "_test",
+        test_folder = test_folder,
+    )
+    for test_folder in [
+        "cli-hello-world",
+        "cli-hello-world-ivy-compat",
+        "cli-hello-world-ivy-i18n",
+        "cli-hello-world-ivy-minimal",
+        "cli-hello-world-lazy",
+        "cli-hello-world-lazy-rollup",
+        "dynamic-compiler",
+        "hello_world__closure",
+        "hello_world__systemjs_umd",
+        "i18n",
+        "injectable-def",
+        "ivy-i18n",
+        "language_service_plugin",
+        "ng_elements",
+        "ng_update",
+        "ng_update_migrations",
+        "ngcc",
+        "platform-server",
+        "service-worker-schema",
+        "side-effects",
+        "terser",
+    ]
+]
+
+# Special case for `typings_test_ts36` test as we want to freeze
+# `typescript` at version 3.6.x for that test.
 angular_integration_test(
-    name = "cli_hello_world_test",
-    commands = [
-        # Use hermetic version of yarn inside of the test
-        "$(location @nodejs//:yarn_bin) install",
-        "$(location @nodejs//:yarn_bin) test",
-        # Commands may also run node programs from node_modules directly such as "./node_modules/.bin/foo".
-        "./node_modules/.bin/uuid",
-    ],
-    # CI_CHROMEDRIVER_VERSION_ARG is used in post-install to configure
-    # which version of chrome driver webdriver-manager downloads. The version
-    # specified should work with your local chrome version.
-    # --action_env=CI_CHROMEDRIVER_VERSION_ARG is set in .bazelrc so that the
-    # test can access this envirnoment variable if it is set. Alternately,
-    # if you can set or override the value used by the test with a --define such as
-    # --define=CI_CHROMEDRIVER_VERSION_ARG="--versions.chrome 78.0.3904.105"
-    configuration_env_vars = ["CI_CHROMEDRIVER_VERSION_ARG"],
-    data = [
-        "@nodejs//:yarn_bin",
-        "@nodejs//:yarn_files",
-    ],
-    npm_packages = {
-        "//packages/animations:npm_package_archive": "@angular/animations",
-        "//packages/common:npm_package_archive": "@angular/common",
-        "//packages/compiler:npm_package_archive": "@angular/compiler",
-        "//packages/compiler-cli:npm_package_archive": "@angular/compiler-cli",
-        "//packages/core:npm_package_archive": "@angular/core",
-        "//packages/forms:npm_package_archive": "@angular/forms",
-        "//packages/language-service:npm_package_archive": "@angular/language-service",
-        "//packages/platform-browser:npm_package_archive": "@angular/platform-browser",
-        "//packages/platform-browser-dynamic:npm_package_archive": "@angular/platform-browser-dynamic",
-        "//packages/router:npm_package_archive": "@angular/router",
-        "//packages/zone.js:npm_package_archive": "zone.js",
-        "@npm//:typescript_archive": "typescript",
-        "@npm//:rxjs_archive": "rxjs",
-        "@npm//:tslib_archive": "tslib",
-        "@npm//:protractor_archive": "protractor",
-        "@npm//:angular_cli_archive": "@angular/cli",
-        "@npm//:types_node_archive": "@types/node",
-    },
-    test_files = glob(
-        include = ["cli-hello-world/**"],
-        exclude = ["cli-hello-world/node_modules/**"],
-    ),
+    name = "typings_test_ts36_test",
+    freeze_npm_packages = ["typescript"],
+    test_folder = "typings_test_ts36",
 )

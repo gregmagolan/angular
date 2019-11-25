@@ -54,7 +54,7 @@ node_repositories(
     yarn_version = "1.17.3",
 )
 
-load("//tools:npm_package_archives.bzl", "npm_package_archives")
+load("//integration:angular_integration_test.bzl", "npm_package_archives")
 
 yarn_install(
     name = "npm",

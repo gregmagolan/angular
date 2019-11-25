@@ -1,4 +1,5 @@
 .DS_STORE
+.yarn_local_cache
 
 /dist/
 /bazel-out

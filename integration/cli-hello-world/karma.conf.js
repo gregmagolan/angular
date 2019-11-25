@@ -1,8 +1,6 @@
 // Karma configuration file, see link for more information
 // https://karma-runner.github.io/1.0/config/configuration-file.html
 
-console.error(JSON.stringify(process.env, null, 2));
-
 // If we're running this integration test under Bazel (with npm_integration_test)
 // and we're on CIRCLECI then we need to run with headless or Chrome fails to start
 // ```

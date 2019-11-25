@@ -9,7 +9,7 @@
     "test": "ng test && yarn e2e --configuration=ci && yarn e2e --configuration=ci-production",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "postinstall": "patch-package && webdriver-manager update --gecko=false --standalone=false $CI_CHROMEDRIVER_VERSION_ARG && ngcc --properties es2015 --create-ivy-entry-points"
+    "postinstall": "webdriver-manager update --gecko=false --standalone=false $CI_CHROMEDRIVER_VERSION_ARG && ngcc --properties es2015 --create-ivy-entry-points"
   },
   "private": true,
   "dependencies": {
@@ -30,8 +30,8 @@
     "@angular/cli": "file:../../node_modules/@angular/cli",
     "@angular/compiler-cli": "file:../../dist/packages-dist/compiler-cli",
     "@angular/language-service": "file:../../dist/packages-dist/language-service",
-    "@types/jasmine": "3.4.6",
-    "@types/jasminewd2": "2.0.8",
+    "@types/jasmine": "file:../../node_modules/@types/jasmine",
+    "@types/jasminewd2": "file:../../node_modules/@types/jasminewd2",
     "@types/node": "file:../../node_modules/@types/node",
     "codelyzer": "5.2.0",
     "jasmine-core": "3.5.0",
@@ -42,7 +42,6 @@
     "karma-jasmine": "2.0.1",
     "karma-jasmine-html-reporter": "1.4.2",
     "protractor": "file:../../node_modules/protractor",
-    "patch-package": "6.2.0",
     "ts-node": "8.3.0",
     "tslint": "5.18.0",
     "typescript": "file:../../node_modules/typescript"
