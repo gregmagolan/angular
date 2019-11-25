@@ -13,14 +13,12 @@ const tmp = require('tmp');
 
 const VERBOSE_LOGS = !!process.env['VERBOSE_LOGS'];
 
+// Set to true if you want the /tmp folder created to persist after the test
+const KEEP_TMP = false;
+
 // Set TEST_MANIFEST to true and use `bazel run` to excersize the MANIFEST
 // file code path on Linux and OSX
 const TEST_MANIFEST = false;
-
-// File permissions to set for files copied to tmp folders.
-// These are needed a files copied out of bazel-bin will have
-// restrictive permissions that may break tests.
-const FILE_PERMISSIONS = '644';
 
 function fail(...m) {
   console.error();
@@ -57,6 +55,19 @@ function isFile(p) {
   return fs.existsSync(p) && fs.statSync(p).isFile();
 }
 
+function isExecutable(stat) {
+  if (process.platform === 'win32') {
+    return true;
+  }
+
+  const isGroup = stat.gid ? process.getgid && stat.gid === process.getgid() : true;
+  const isUser = stat.uid ? process.getuid && stat.uid === process.getuid() : true;
+
+  return Boolean(
+      (stat.mode & 0o0001) || ((stat.mode & 0o0010) && isGroup) ||
+      ((stat.mode & 0o0100) && isUser));
+}
+
 /**
  * Given a list of files, the root directory is returned
  */
@@ -84,7 +95,8 @@ function copy(files, root, to) {
     if (!src.startsWith(root)) {
       fail(`file to copy ${src} is not under root ${root}`);
     }
-    if (isFile(src)) {
+    const stat = fs.statSync(src);
+    if (stat.isFile(src)) {
       const rel = src.slice(root.length + 1);
       if (rel.startsWith('node_modules/')) {
         // don't copy nested node_modules
@@ -93,7 +105,10 @@ function copy(files, root, to) {
       const dest = path.posix.join(to, rel);
       mkdirp(path.dirname(dest));
       fs.copyFileSync(src, dest);
-      fs.chmodSync(dest, FILE_PERMISSIONS);
+      // Set file permissions to set for files copied to tmp folders.
+      // These are needed as files copied out of bazel-bin will have
+      // restrictive permissions that may break tests.
+      fs.chmodSync(dest, isExecutable(stat) ? '755' : '644');
       log_verbose(`copying file ${src} -> ${dest}`);
     } else {
       fail('directories in test_files not supported');
@@ -135,32 +150,52 @@ class TestRunner {
     if (!isFile(packageJson)) {
       fail(`no package.json file found at test root ${this.testRoot}`);
     }
-    let contents = fs.readFileSync(packageJson, {encoding: 'utf-8'});
+    let contents = JSON.parse(fs.readFileSync(packageJson, {encoding: 'utf-8'}));
     // replace npm packages
     for (const key of Object.keys(this.config.npmPackages)) {
       const path = this._resolveFile(this.config.npmPackages[key]);
-      const regex = new RegExp(`\"${key}\"\\s*\:\\s*\"[^"]+`);
-      const replacement = `"${key}": "file:${path}`;
-      contents = contents.replace(regex, replacement);
-      if (!contents.includes(path)) {
-        fail(`package.json replacement for npm package '${key}' failed`);
+      const replacement = `file:${path}`;
+      if (contents.dependencies && contents.dependencies[key]) {
+        contents.dependencies[key] = replacement;
+        log(`overriding dependencies['${key}'] npm package with 'file:${path}' in package.json file`);
       }
-      log(`overriding '${key}' npm package with 'file:${path}' in package.json file`);
+      if (contents.devDependencies && contents.devDependencies[key]) {
+        contents.devDependencies[key] = replacement;
+        log(`overriding devDependencies['${key}'] npm package with 'file:${path}' in package.json file`);
+      }
     }
-    // check packages
+    // check packages that must be replaced
     const failedPackages = [];
     for (const key of this.config.checkNpmPackages) {
-      if (contents.includes(`"${key}"`) &&
-          (!contents.includes(`"${key}": "file:`) || contents.includes(`"${key}": "file:.`))) {
+      if (contents.dependencies && contents.dependencies[key] &&
+          (!contents.dependencies[key].startsWith('file:') ||
+           contents.dependencies[key].startsWith('file:.'))) {
+        failedPackages.push(key);
+      } else if (
+          contents.devDependencies && contents.devDependencies[key] &&
+          (!contents.devDependencies[key].startsWith('file:') ||
+           contents.devDependencies[key].startsWith('file:.'))) {
         failedPackages.push(key);
       }
     }
+    // fail for any npm packages remaining in the test package.json with relative paths
+    const dependencies =
+        Object.keys((contents.dependencies || [])).concat(Object.keys(contents.devDependencies || [
+        ]));
+    for (const key of dependencies) {
+      const value = (contents.dependencies ? contents.dependencies[key] : null) ||
+          (contents.devDependencies ? contents.devDependencies[key] : null);
+      if (value.startsWith('file:.')) {
+        failedPackages.push(key);
+      }
+    }
+    const contentsEncoded = JSON.stringify(contents, null, 2);
+    log(`package.json file:\n${contentsEncoded}`);
     if (failedPackages.length) {
       fail(
-          `expected replacement of npm packages ${JSON.stringify(failedPackages)} for locally generated npm_package not found; add these to npm_packages attribute`);
+          `expected replacements of npm packages ${JSON.stringify(failedPackages)} not found; add these to the npm_packages attribute`);
     }
-    log(`package.json file:\n${contents}`);
-    fs.writeFileSync(packageJson, contents);
+    fs.writeFileSync(packageJson, contentsEncoded);
   }
 
   /** @internal */
@@ -194,7 +229,8 @@ class TestRunner {
   _copyToTmp(files) {
     const resolved = files.map(f => this._resolveFile(f));
     return copy(
-        resolved, rootDirectory(resolved), tmp.dirSync({keep: false, unsafeCleanup: true}).name);
+        resolved, rootDirectory(resolved),
+        tmp.dirSync({keep: KEEP_TMP, unsafeCleanup: !KEEP_TMP}).name);
   }
 
   /** @internal */

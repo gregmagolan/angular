@@ -188,7 +188,7 @@ def npm_integration_test(name, **kwargs):
         testonly = True,
     )
 
-    tags = kwargs.pop("tags", []) + ["manual"]
+    tags = kwargs.pop("tags", [])
     npm_deps = ["@npm//tmp"]
 
     nodejs_test(
@@ -205,42 +205,8 @@ def npm_integration_test(name, **kwargs):
     nodejs_test(
         name = name + ".debug",
         data = data + npm_deps + [":%s.debug.config" % name, ":%s.debug.config.js" % name],
-        tags = tags,
+        tags = tags + ["manual"],
         templated_args = ["$(location :%s.debug.config.js)" % name],
         entry_point = "//tools/npm_integration_test:test_runner.js",
-        **kwargs
-    )
-
-def angular_integration_test(**kwargs):
-    "Set defaults for the npm_integration_test common to the angular repo"
-    GENERATED_NPM_PACKAGES = [
-        "@angular/animations",
-        "@angular/bazel",
-        "@angular/benchpress",
-        "@angular/common",
-        "@angular/compiler",
-        "@angular/compiler-cli",
-        "@angular/core",
-        "@angular/elements",
-        "@angular/forms",
-        "@angular/http",
-        "@angular/language-service",
-        "@angular/platform-browser",
-        "@angular/platform-browser-dynamic",
-        "@angular/platform-server",
-        "@angular/platform-webworkeer",
-        "@angular/platform-webworker-dynamic",
-        "@angular/router",
-        "@angular/service-worker",
-        "@angular/upgrade",
-        "zone.js",
-    ]
-    npm_integration_test(
-        check_npm_packages = GENERATED_NPM_PACKAGES,
-        # Integration do not work inside of a sandbox as they may run host applications such
-        # as chrome (which is run by ng) that require access to files outside of the sandbox.
-        # They also need to run locally and not on RBE as they require network access for
-        # yarn install & npm install.
-        tags = kwargs.pop("tags", []) + ["no-sandbox", "local"],
         **kwargs
     )

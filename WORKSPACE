@@ -45,7 +45,7 @@ node_repositories(
     vendored_yarn = "@angular//:third_party/github.com/yarnpkg/yarn/releases/download/v1.21.1",
 )
 
-load("//tools:npm_package_archives.bzl", "npm_package_archives")
+load("//integration:angular_integration_test.bzl", "npm_package_archives")
 
 yarn_install(
     name = "npm",
