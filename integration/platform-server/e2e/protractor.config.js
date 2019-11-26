@@ -28,7 +28,8 @@ exports.config = {
     },
   },
   directConnect: true,
-  baseUrl: 'http://localhost:9876/',
+  // Port comes from lite-serve config `/src/server.ts` `app.listen(4213,...`
+  baseUrl: 'http://localhost:4213/',
   framework: 'jasmine',
   useAllAngular2AppRoots: true
 };
