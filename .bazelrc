@@ -72,10 +72,6 @@ test --test_output=errors
 run --action_env=CI_CHROMEDRIVER_VERSION_ARG
 test --action_env=CI_CHROMEDRIVER_VERSION_ARG
 
-# Integration tests that run browsers may need to test in headless mode under CircleCI
-run --action_env=CIRCLECI
-test --action_env=CIRCLECI
-
 ################################
 # Temporary Settings for Ivy   #
 ################################

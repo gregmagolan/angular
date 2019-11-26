@@ -143,6 +143,7 @@ def _angular_integration_test(freeze_npm_packages = [], **kwargs):
             # where they need to run in headless mode when under Bazel
             "CIRCLECI",
         ],
+        timeout = "long",
         **kwargs
     )
 
