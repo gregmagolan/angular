@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "ng build --prod",
-    "e2e": "ng e2e",
+    "e2e": "ng e2e --port 4204",
     "lint": "ng lint",
     "ng": "ng",
     "postinstall": "yarn update-webdriver && ngcc --properties es2015 browser module main --first-only --create-ivy-entry-points",

@@ -28,7 +28,7 @@ module.exports = function (config) {
       clearContext: false // leave Jasmine Spec Runner output visible in browser
     },
     reporters: ['progress', 'kjhtml'],
-    port: 9876,
+    port: 9884,
     colors: true,
     logLevel: config.LOG_INFO,
     autoWatch: true,

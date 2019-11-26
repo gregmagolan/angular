@@ -32,7 +32,8 @@ exports.config = {
     },
   },
   directConnect: true,
-  baseUrl: 'http://localhost:4200/',
+  // Port comes from package.json `e2e` script `ng e2e --port 4203`
+  baseUrl: 'http://localhost:4203/',
   framework: 'jasmine',
   jasmineNodeOpts: {
     showColors: true,

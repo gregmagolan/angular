@@ -124,8 +124,6 @@ def _angular_integration_test(freeze_npm_packages = [], **kwargs):
             # yarn install & npm install.
             "no-sandbox",
             "local",
-            # Temporarily set these as exclusive while they all run on the same port
-            "exclusive",
         ],
         data = kwargs.pop("data", []) + [
             # We need the yarn_bin & yarn_files available at runtime

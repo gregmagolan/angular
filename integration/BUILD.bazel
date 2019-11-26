@@ -1,5 +1,40 @@
 load(":angular_integration_test.bzl", "angular_integration_test")
 
+# Unique ports must be managed manually or some effort must be put into
+# selecting a random port that is not currently in use for each e2e test at runtime.
+# For now we pick ports manually so they don't collide when integration tests
+# are run in parallel with Bazel:
+#   TEST                                PORT        CONFIGURATION
+#   ====                                ====        =============
+#   cli-hello-world                     4201        /package.json: ng e2e --port 4201
+#   cli-hello-world                     9877        /karma.conf.js: port: 9877
+#   cli-hello-world-ivy-compat          4202        /package.json: ng e2e --port 4202
+#   cli-hello-world-ivy-compat          9878        /karma.conf.js: port: 9878
+#   cli-hello-world-ivy-i18n            4203        /package.json: ng e2e --port 4203
+#   cli-hello-world-ivy-i18n            9879        /karma.conf.js: port: 9879
+#   cli-hello-world-ivy-minimal         4204        /package.json: ng e2e --port 4204
+#   cli-hello-world-ivy-minimal         9880        /karma.conf.js: port: 9880
+#   cli-hello-world-ivy-lazy            4205        /package.json: ng e2e --port 4205
+#   cli-hello-world-ivy-lazy            9881        /karma.conf.js: port: 9881
+#   cli-hello-world-ivy-lazy-rollup     4206        /package.json: ng e2e --port 4206
+#   cli-hello-world-ivy-lazy-rollup     9882        /karma.conf.js: port: 9882
+#   dynamic-compiler                    4207        /e2e/browser.config.json: "port": 4207
+#   hello_world__closure                4208        /e2e/browser.config.json: "port": 4208
+#   hello_world__systemjs_umd           4209        /bs-config.e2e.json: "port": 4209
+#   i18n                                4210        /e2e/browser.config.json: "port": 4210
+#   injectable-def                      ----
+#   ivy-i18n                            4211        /package.json: ng e2e --port 4211
+#   ivy-i18n                            9883        /karma.conf.js: port: 9883
+#   language_service_plugin             ----
+#   ng_elements                         4212        /e2e/browser.config.json: "port": 4212
+#   ng_update                           ----
+#   ng_update_migrations                9884        /karma.conf.js: port: 9884
+#   ngcc                                ----
+#   platform-server                     4213        /src/server.ts: app.listen(4213,...
+#   service-worker-schema               ----
+#   side-effects                        ----
+#   terser                              ----
+
 [
     angular_integration_test(
         name = test_folder + "_test",
