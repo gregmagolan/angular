@@ -46,7 +46,6 @@ load(":angular_integration_test.bzl", "angular_integration_test")
         "cli-hello-world-ivy-minimal",
         "cli-hello-world-lazy",
         "cli-hello-world-lazy-rollup",
-        "hello_world__systemjs_umd",
         "language_service_plugin",
         "ng_update",
         "service-worker-schema",
@@ -193,4 +192,14 @@ angular_integration_test(
     name = "typings_test_ts36_test",
     freeze_npm_packages = ["typescript"],
     test_folder = "typings_test_ts36",
+)
+
+# Special case for `hello_world__systemjs_umd` test as we want to freeze
+# `systems` at version 0.20.2 and not use the root node_modules systemjs
+# which is stuck at 0.18.10 and can't be updated to 0.20.2 without
+# breaking the legacy saucelabs job.
+angular_integration_test(
+    name = "hello_world__systemjs_umd_test",
+    freeze_npm_packages = ["systemjs"],
+    test_folder = "hello_world__systemjs_umd",
 )
