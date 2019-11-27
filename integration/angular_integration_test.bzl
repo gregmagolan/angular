@@ -118,6 +118,9 @@ def _angular_integration_test(freeze_npm_packages = [], **kwargs):
         commands = commands,
         npm_packages = npm_packages,
         tags = kwargs.pop("tags", []) + [
+            # `integration` tag is used for filtering out these tests from the normal
+            # developer workflow
+            "integration",
             # Integration do not work inside of a sandbox as they may run host applications such
             # as chrome (which is run by ng) that require access to files outside of the sandbox.
             # They also need to run locally and not on RBE as they require network access for
