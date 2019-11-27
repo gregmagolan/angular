@@ -292,6 +292,7 @@ jobs:
       # Setup remote execution and run RBE-compatible tests.
       - setup_bazel_rbe
       - run:
+          # Don't use `yarn test-non-ivy ...` as we want to include the //integration/... tests
           command: yarn bazel test //... --build_tag_filters=-ivy-only --test_tag_filters=-ivy-only
           no_output_timeout: 20m
 
@@ -311,7 +312,8 @@ jobs:
         # not be able to easily find the output bin directory when uploading artifacts for size
         # measurements.
       - run:
-          command: yarn test-ivy-aot //... --symlink_prefix=dist/
+          # Don't use `yarn test-ivy-aot ...` as we want to include the //integration/... tests
+          command: yarn bazel test //... --symlink_prefix=dist/ --config=ivy --build_tag_filters=-no-ivy-aot,-fixme-ivy-aot --test_tag_filters=-no-ivy-aot,-fixme-ivy-aot
           no_output_timeout: 20m
 
         # Publish bundle artifacts which will be used to calculate the size change. **Note**: Make
