@@ -217,7 +217,9 @@ class TestRunner {
       if (!root.startsWith(`${testWorkspace}/`)) {
         fail(`debug mode only available with test files in the test workspace '${testWorkspace}'`);
       }
-      this.testRoot = path.posix.join(workspaceDirectory, '..', root);
+      // trim the workspace name from the root to get to the subdirectory of the test files
+      const subdir = root.split('/').slice(1).join('/');
+      this.testRoot = path.posix.join(workspaceDirectory, subdir);
       log(`configuring test in-place under ${this.testRoot}`);
     } else {
       this.testRoot = this._copyToTmp(this.config.testFiles);
