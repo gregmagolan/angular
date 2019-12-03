@@ -143,9 +143,6 @@ def _angular_integration_test(freeze_npm_packages = [], **kwargs):
             # if you can set or override the value used by the test with a --define such as
             # --define=CI_CHROMEDRIVER_VERSION_ARG="--versions.chrome 78.0.3904.105"
             "CI_CHROMEDRIVER_VERSION_ARG",
-            # CIRCLECI is used by karma & protractor configs to detect if running on CircleCI
-            # where they need to run in headless mode when under Bazel
-            "CIRCLECI",
         ],
         timeout = "long",
         **kwargs
