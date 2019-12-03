@@ -6,6 +6,8 @@ load(":angular_integration_test.bzl", "angular_integration_test")
 # are run in parallel with Bazel:
 #   TEST                                PORT        CONFIGURATION
 #   ====                                ====        =============
+#   bazel                               random      handled by Bazel rules
+#   bazel-schematics                    4200/9876   default ports (for non-bazel test)
 #   cli-hello-world                     4201        /package.json: ng e2e --port 4201
 #   cli-hello-world                     9877        /karma.conf.js: port: 9877
 #   cli-hello-world-ivy-compat          4202        /package.json: ng e2e --port 4202
@@ -41,6 +43,8 @@ load(":angular_integration_test.bzl", "angular_integration_test")
         test_folder = test_folder,
     )
     for test_folder in [
+        "bazel",
+        "bazel-schematics",
         "cli-hello-world",
         "cli-hello-world-ivy-compat",
         "cli-hello-world-ivy-minimal",

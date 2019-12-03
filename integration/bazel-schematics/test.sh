@@ -13,13 +13,13 @@ function installLocalPackages() {
   )
   local local_packages=()
   for package in "${packages[@]}"; do
-    local_packages+=("@angular/${package}@file:${pwd}/../../../dist/packages-dist/${package}")
+    local_packages+=("@angular/${package}@file:${pwd}/../node_modules/@angular/${package}")
   done
 
   # keep typescript, tslib, and @types/node versions in sync with the ones used in this repo
-  local_packages+=("typescript@file:${pwd}/../../../node_modules/typescript")
-  local_packages+=("tslib@file:${pwd}/../../../node_modules/tslib")
-  local_packages+=("@types/node@file:${pwd}/../../../node_modules/@types/node")
+  local_packages+=("typescript@file:${pwd}/../node_modules/typescript")
+  local_packages+=("tslib@file:${pwd}/../node_modules/tslib")
+  local_packages+=("@types/node@file:${pwd}/../node_modules/@types/node")
 
   yarn add --ignore-scripts --silent "${local_packages[@]}"
 }
@@ -52,7 +52,7 @@ function testNonBazel() {
   # disable CLI's version check (if version is 0.0.0, then no version check happens)
   yarn --cwd node_modules/@angular/cli version --new-version 0.0.0 --no-git-tag-version
   # re-add build-angular
-  yarn add --dev file:../../../node_modules/@angular-devkit/build-angular
+  yarn add --dev file:../node_modules/@angular-devkit/build-angular
   yarn webdriver-manager update --gecko=false --standalone=false ${CI_CHROMEDRIVER_VERSION_ARG:---versions.chrome 2.45}
   ng build --progress=false
   ng test --progress=false --watch=false
