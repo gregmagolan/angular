@@ -50,9 +50,8 @@ for testDir in ${TEST_DIRS}; do
   [[ -d "$testDir" ]] || continue
 
   # Skip all integration tests that are now handled by angular_integration_test except
-  # the bazel-in-bazel tests (which can't be run by angular_integration_test) and the
-  # tests that are tracked for payload size below.
-  if ([[ ! $testDir =~ bazel ]] && [[ ! $testDir =~ cli-hello-world ]] && [[ ! $testDir == hello_world__closure ]]); then
+  # the tests that are tracked for payload size below.
+  if ([[ ! $testDir =~ cli-hello-world ]] && [[ ! $testDir == hello_world__closure ]]); then
     echo ""
     echo "######################################################################"
     echo "NOT running integration test $testDir"

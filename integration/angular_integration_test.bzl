@@ -34,6 +34,7 @@ NPM_PACKAGE_ARCHIVES = [
     "rollup-plugin-node-resolve",
     "@angular/cli",
     "@angular-devkit/build-angular",
+    "@bazel/bazel",
     "@types/jasmine",
     "@types/jasminewd2",
     "@types/node",
