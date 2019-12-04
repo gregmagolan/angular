@@ -189,17 +189,28 @@ load(":angular_integration_test.bzl", "angular_integration_test")
 ]
 
 # Special cases for bazel-in-bazel tests which are tagged
-# as exclusive so that they don't drain all the resources
-# on the machine when run in paralle.
+# as "exclusive" so that they don't drain all the resources
+# on the machine when run in parallel. Also only run
+# these tests against the ViewEngine generated packages.
+# Since these tests are "exclusive", also tag them as
+# manual as they will be run in separate CI jobs.
 angular_integration_test(
     name = "bazel_test",
-    tags = ["exclusive"],
+    tags = [
+        "exclusive",
+        "manual",
+        "no-ivy-aot",
+    ],
     test_folder = "bazel",
 )
 
 angular_integration_test(
     name = "bazel-schematics_test",
-    tags = ["exclusive"],
+    tags = [
+        "exclusive",
+        "manual",
+        "no-ivy-aot",
+    ],
     test_folder = "bazel-schematics",
 )
 
