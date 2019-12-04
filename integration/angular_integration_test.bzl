@@ -127,7 +127,7 @@ def _angular_integration_test(freeze_npm_packages = [], **kwargs):
             # They also need to run locally and not on RBE as they require network access for
             # yarn install & npm install.
             "no-sandbox",
-            "local",
+            "no-remote-exec",
         ],
         data = kwargs.pop("data", []) + [
             # We need the yarn_bin & yarn_files available at runtime
