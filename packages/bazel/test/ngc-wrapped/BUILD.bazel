@@ -51,3 +51,24 @@ jasmine_node_test(
     srcs = [":flat_module_test_lib"],
     data = ["//packages/bazel/test/ngc-wrapped/flat_module"],
 )
+
+filegroup(
+    name = "aio_files",
+    srcs = glob([
+        "**/*.ts",
+        "**/*.md",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html",
+        "**/*.css",
+        "**/*.xlf",
+        "**/*.ng",
+        "**/*.txt",
+        "**/*.xtb",
+        "**/*.png",
+        "**/*.proto",
+        "**/*.template",
+        "**/*.puml",
+    ]),
+    visibility = ["//:__pkg__"],
+)

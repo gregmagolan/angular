@@ -56,3 +56,24 @@ protractor_web_test_suite(
         "@npm//selenium-webdriver",
     ],
 )
+
+filegroup(
+    name = "aio_files",
+    srcs = glob([
+        "**/*.ts",
+        "**/*.md",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html",
+        "**/*.css",
+        "**/*.xlf",
+        "**/*.ng",
+        "**/*.txt",
+        "**/*.xtb",
+        "**/*.png",
+        "**/*.proto",
+        "**/*.template",
+        "**/*.puml",
+    ]),
+    visibility = ["//:__pkg__"],
+)

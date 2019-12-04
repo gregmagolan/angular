@@ -11,3 +11,24 @@ create_upgrade_example_targets(
     e2e_srcs = glob(["e2e_test/*_spec.ts"]),
     entry_module = "@angular/examples/upgrade/static/ts/lite-multi/module",
 )
+
+filegroup(
+    name = "aio_files",
+    srcs = glob([
+        "**/*.ts",
+        "**/*.md",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html",
+        "**/*.css",
+        "**/*.xlf",
+        "**/*.ng",
+        "**/*.txt",
+        "**/*.xtb",
+        "**/*.png",
+        "**/*.proto",
+        "**/*.template",
+        "**/*.puml",
+    ]),
+    visibility = ["//:__pkg__"],
+)

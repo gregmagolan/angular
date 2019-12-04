@@ -87,3 +87,24 @@ nodejs_binary(
     entry_point = ":example_package.spec.ts",
     templated_args = ["--accept"],
 )
+
+filegroup(
+    name = "aio_files",
+    srcs = glob([
+        "**/*.ts",
+        "**/*.md",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html",
+        "**/*.css",
+        "**/*.xlf",
+        "**/*.ng",
+        "**/*.txt",
+        "**/*.xtb",
+        "**/*.png",
+        "**/*.proto",
+        "**/*.template",
+        "**/*.puml",
+    ]),
+    visibility = ["//:__pkg__"],
+)

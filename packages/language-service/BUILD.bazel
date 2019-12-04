@@ -37,3 +37,24 @@ npm_package(
         "//packages/language-service/bundles:language-service.umd.js",
     ],
 )
+
+filegroup(
+    name = "aio_files",
+    srcs = glob([
+        "**/*.ts",
+        "**/*.md",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html",
+        "**/*.css",
+        "**/*.xlf",
+        "**/*.ng",
+        "**/*.txt",
+        "**/*.xtb",
+        "**/*.png",
+        "**/*.proto",
+        "**/*.template",
+        "**/*.puml",
+    ]),
+    visibility = ["//:__pkg__"],
+)

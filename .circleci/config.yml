@@ -378,31 +378,17 @@ jobs:
           webhook_url_env_var: SLACK_DEV_INFRA_CI_FAILURES_WEBHOOK_URL
 
   test_aio:
-    # Needed because the AIO tests and the PWA score test depend on Chrome being available.
-    executor: browsers-executor
+    executor:
+      # Needed because the AIO tests and the PWA score test depend on Chrome being available.
+      name: browsers-executor
+      resource_class: xlarge
     steps:
       - custom_attach_workspace
       - init_environment
-        # Compile dependencies to ivy
-        # Running `ngcc` here (instead of implicitly via `ng build`) allows us to take advantage of
-        # the parallel, async mode speed-up (~20-25s on CI).
-      - run: yarn --cwd aio ngcc --properties es2015
-        # Build aio
-      - run: yarn --cwd aio build --progress=false
-        # Lint the code
-      - run: yarn --cwd aio lint
-        # Run unit tests
-      - run: yarn --cwd aio test --progress=false --watch=false
-        # Run e2e tests
-      - run: yarn --cwd aio e2e --configuration=ci
-        # Run PWA-score tests
-      - run: yarn --cwd aio test-pwa-score-localhost $CI_AIO_MIN_PWA_SCORE
-        # Run accessibility tests
-      - run: yarn --cwd aio test-a11y-score-localhost
-        # Check the bundle sizes.
-      - run: yarn --cwd aio payload-size
-        # Run unit tests for Firebase redirects
-      - run: yarn --cwd aio redirects-test
+      # Test the ".debug" target as we want to commands to run in-place and not in runfiles.
+      # We're hijacking bazel as the remote-cache for this test result based on test test_files
+      # inputs but we're want to run the test commands on the user workspace and not in runfiles.
+      - run: yarn bazel test //:aio_test.debug --test_output=streamed
 
   deploy_aio:
     # Needed because before deploying the deploy-production script runs the PWA score tests.

@@ -4,6 +4,9 @@
 
 const { SpecReporter } = require('jasmine-spec-reporter');
 
+// Run in headless when under `bazel test` as tests may be parallized
+const headless = process.env['BAZEL_TARGET'] && !process.env['BUILD_WORKSPACE_DIRECTORY'];
+
 /**
  * @type { import("protractor").Config }
  */
@@ -14,6 +17,9 @@ exports.config = {
   ],
   capabilities: {
     browserName: 'chrome',
+    chromeOptions: {
+      args: headless ? ['--headless', '--disable-gpu', '--disable-dev-shm-usage'] : [],
+    },
   },
   directConnect: true,
   baseUrl: 'http://localhost:4200/',

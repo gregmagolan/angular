@@ -78,6 +78,12 @@ query --deleted_packages=integration/bazel,integration/bazel/src,integration/baz
 run --action_env=CI_CHROMEDRIVER_VERSION_ARG
 test --action_env=CI_CHROMEDRIVER_VERSION_ARG
 
+# These are needed for //:aio_test.debug
+run --action_env=CI_AIO_MIN_PWA_SCORE
+test --action_env=CI_AIO_MIN_PWA_SCORE
+run --action_env=PROJECT_ROOT
+test --action_env=PROJECT_ROOT
+
 ################################
 # Temporary Settings for Ivy   #
 ################################

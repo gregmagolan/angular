@@ -1,6 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 load("//tools:defaults.bzl", "karma_web_test")
+load("//tools/npm_integration_test:npm_integration_test.bzl", "npm_integration_test")
+load("//packages:packages.bzl", PACKAGES_PACKAGES = "PACKAGES")
 
 exports_files([
     "LICENSE",
@@ -90,4 +92,78 @@ karma_web_test(
         # 	   at Anonymous function (eval code:114:50)
         # 	   at fulfilled (eval code:104:47)
     ],
+)
+
+# *****EXPERIMENTAL*****
+# Run test with debug target to run in-place instead of in runfiles:
+#   bazel test //:aio_test.debug
+npm_integration_test(
+    name = "aio_test",
+    timeout = "long",
+    commands = [
+        "$(location @nodejs//:yarn_bin) --cwd aio install",
+        # Compile dependencies to ivy
+        # Running `ngcc` here (instead of implicitly via `ng build`) allows us to take advantage of
+        # the parallel, async mode speed-up (~20-25s on CI).
+        "$(location @nodejs//:yarn_bin) --cwd aio ngcc --properties es2015",
+        # Build aio
+        "$(location @nodejs//:yarn_bin) --cwd aio build --progress=false",
+        # Lint the code
+        "$(location @nodejs//:yarn_bin) --cwd aio lint",
+        # Run unit tests
+        "$(location @nodejs//:yarn_bin) --cwd aio test --progress=false --watch=false",
+        # Run e2e tests
+        "$(location @nodejs//:yarn_bin) --cwd aio e2e --configuration=ci",
+        # Run PWA-score tests
+        "$(location @nodejs//:yarn_bin) --cwd aio test-pwa-score-ci",
+        # Run accessibility tests
+        "$(location @nodejs//:yarn_bin) --cwd aio test-a11y-score-localhost",
+        # Check the bundle sizes.
+        "$(location @nodejs//:yarn_bin) --cwd aio payload-size",
+        # Run unit tests for Firebase redirects
+        "$(location @nodejs//:yarn_bin) --cwd aio redirects-test",
+    ],
+    configuration_env_vars = [
+        "PROJECT_ROOT",
+        "CI_AIO_MIN_PWA_SCORE",
+        # CI_CHROMEDRIVER_VERSION_ARG is used in post-install to configure
+        # which version of chrome driver webdriver-manager downloads. The version
+        # specified should work with your local chrome version.
+        # --action_env=CI_CHROMEDRIVER_VERSION_ARG is set in .bazelrc so that the
+        # test can access this envirnoment variable if it is set. Alternately,
+        # if you can set or override the value used by the test with a --define such as
+        # --define=CI_CHROMEDRIVER_VERSION_ARG="--versions.chrome 78.0.3904.105"
+        "CI_CHROMEDRIVER_VERSION_ARG",
+    ],
+    data = [
+        # We need the yarn_bin & yarn_files available at runtime
+        "@nodejs//:yarn_bin",
+        "@nodejs//:yarn_files",
+    ],
+    tags = [
+        # This one should be run explicitly
+        "manual",
+        # Integration do not work inside of a sandbox as they may run host applications such
+        # as chrome (which is run by ng) that require access to files outside of the sandbox.
+        # They also need to run locally and not on RBE as they require network access for
+        # yarn install & npm install.
+        "no-sandbox",
+        "no-remote-exec",
+    ],
+    # Be very specific about what files under /packages are included in the aio_files target
+    # glob so we don't include the kitchen sink. Any changes to these files will trigger
+    # an aio build on CI.
+    # Check files extensions with:
+    #   find ./packages -type f | awk -F. '!a[$NF]++{print $NF}'
+    test_files = glob(
+        include = ["aio/**"],
+        exclude = [
+            "aio/node_modules/**",
+            "aio/**/node_modules/**",
+        ],
+    ) + [
+        "//tools:yarn/check-yarn.js",
+        "//tools:npm/@angular_bazel/index.js",
+        "//tools:npm/@angular_bazel/package.json",
+    ] + ["//%s:aio_files" % pkg for pkg in PACKAGES_PACKAGES],
 )
