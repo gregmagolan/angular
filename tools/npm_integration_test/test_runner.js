@@ -134,7 +134,7 @@ class TestRunner {
           split[0] :
           this._resolveFile(split[0].replace(/^external\//, ''));
       const args = split.slice(1);
-      log(`running test command '${binary} ${args.join(' ')}' in ${this.testRoot}`);
+      log(`running test command ${this.successful+1} of ${this.config.commands.length} '${binary} ${args.join(' ')}' in ${this.testRoot}`);
       const spawnedProcess = spawnSync(binary, args, {cwd: this.testRoot, stdio: 'inherit'});
       if (spawnedProcess.status) {
         return spawnedProcess.status;
