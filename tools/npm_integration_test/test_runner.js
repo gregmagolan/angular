@@ -69,22 +69,32 @@ function isExecutable(stat) {
 }
 
 /**
+ * Given two arrays returns the longest common slice.
+ */
+function commonSlice(a, b) {
+  const s = a.length > b.length ? a : b;
+  const l = a.length > b.length ? b : a;
+  for (let i = 0; i < s.length; ++i) {
+    if (s[i] !== l[i]) {
+      return s.slice(0, i);
+    }
+  }
+  return s;
+}
+
+/**
  * Given a list of files, the root directory is returned
  */
 function rootDirectory(files) {
-  let root = files[0];
+  let root = path.dirname(files[0]).split('/');
   for (f of files) {
-    const maybe = path.dirname(f);
-    if (maybe.length < root.length) {
-      root = maybe;
-    }
+    root = commonSlice(root, path.dirname(f).split('/'));
+    if (root.length <= 1) break;
   }
-  for (f of files) {
-    if (!f.startsWith(root)) {
-      fail(`not all test files are under the same root (${f} does not start with ${root}!`);
-    }
+  if (!root.length) {
+    fail(`not all test files are under the same root!`);
   }
-  return root;
+  return root.join('/');
 }
 
 /**
@@ -151,15 +161,18 @@ class TestRunner {
       fail(`no package.json file found at test root ${this.testRoot}`);
     }
     let contents = JSON.parse(fs.readFileSync(packageJson, {encoding: 'utf-8'}));
+    let replacements = 0;
     // replace npm packages
     for (const key of Object.keys(this.config.npmPackages)) {
       const path = this._resolveFile(this.config.npmPackages[key]);
       const replacement = `file:${path}`;
       if (contents.dependencies && contents.dependencies[key]) {
+        replacements++;
         contents.dependencies[key] = replacement;
         log(`overriding dependencies['${key}'] npm package with 'file:${path}' in package.json file`);
       }
       if (contents.devDependencies && contents.devDependencies[key]) {
+        replacements++;
         contents.devDependencies[key] = replacement;
         log(`overriding devDependencies['${key}'] npm package with 'file:${path}' in package.json file`);
       }
@@ -178,24 +191,15 @@ class TestRunner {
         failedPackages.push(key);
       }
     }
-    // fail for any npm packages remaining in the test package.json with relative paths
-    const dependencies =
-        Object.keys((contents.dependencies || [])).concat(Object.keys(contents.devDependencies || [
-        ]));
-    for (const key of dependencies) {
-      const value = (contents.dependencies ? contents.dependencies[key] : null) ||
-          (contents.devDependencies ? contents.devDependencies[key] : null);
-      if (value.startsWith('file:.')) {
-        failedPackages.push(key);
-      }
-    }
     const contentsEncoded = JSON.stringify(contents, null, 2);
     log(`package.json file:\n${contentsEncoded}`);
     if (failedPackages.length) {
       fail(
           `expected replacements of npm packages ${JSON.stringify(failedPackages)} not found; add these to the npm_packages attribute`);
     }
-    fs.writeFileSync(packageJson, contentsEncoded);
+    if (replacements) {
+      fs.writeFileSync(packageJson, contentsEncoded);
+    }
   }
 
   /** @internal */
@@ -205,20 +209,32 @@ class TestRunner {
     }
     if (this.config.debug) {
       // Setup the test in the test files root directory
-      const workspaceDirectory = process.env['BUILD_WORKSPACE_DIRECTORY'];
-      if (!workspaceDirectory) {
-        fail(`debug mode only available with 'bazel run ${process.env['TEST_TARGET']}'`);
-      }
       const testWorkspace = process.env['TEST_WORKSPACE'];
       if (!testWorkspace) {
         fail(`TEST_WORKSPACE not set`);
       }
       const root = rootDirectory(this.config.testFiles);
-      if (!root.startsWith(`${testWorkspace}/`)) {
+      if (!root.startsWith(`${testWorkspace}/`) && root !== testWorkspace) {
         fail(`debug mode only available with test files in the test workspace '${testWorkspace}'`);
       }
       // trim the workspace name from the root to get to the subdirectory of the test files
       const subdir = root.split('/').slice(1).join('/');
+      let workspaceDirectory = process.env['BUILD_WORKSPACE_DIRECTORY'];
+      if (!workspaceDirectory) {
+        // bazel test
+        const runfiles = process.env['RUNFILES'];
+        if (!runfiles) {
+          fail(`RUNFILES environment variable is not set`);
+        }
+        const index = runfiles.search(/[\\/]execroot[\\/]/);
+        if (index == -1) {
+          fail(`no /execroot/ in runfiles path`);
+        }
+        // read the contents of the DO_NOT_BUILD_HERE file to get
+        // the workspace directory
+        workspaceDirectory = fs.readFileSync(
+            path.posix.join(runfiles.substr(0, index), 'DO_NOT_BUILD_HERE'), {encoding: 'utf-8'});
+      }
       this.testRoot = path.posix.join(workspaceDirectory, subdir);
       log(`configuring test in-place under ${this.testRoot}`);
     } else {

@@ -32,8 +32,8 @@ def _npm_integration_test_config_impl(ctx):
 
     if ctx.attr.debug:
         for f in ctx.files.test_files:
-            if not f.is_source:
-                fail("In debug mode, all test files must be source files.")
+            if f.is_directory:
+                fail("In debug mode, directory test_files labels not supported.")
 
     commands = []
     for c in ctx.attr.commands:
