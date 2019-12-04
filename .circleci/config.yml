@@ -286,6 +286,23 @@ jobs:
           command: yarn bazel test //... --build_tag_filters=-ivy-only --test_tag_filters=-ivy-only
           no_output_timeout: 20m
 
+  test_integration_bazel:
+    executor:
+      # Needed because the integration tests expect Chrome to be installed (e.g cli-hello-world)
+      name: browsers-executor
+      resource_class: xlarge
+    steps:
+      - custom_attach_workspace
+      - init_environment
+      - setup_circleci_bazel_config
+      # Setup remote execution and run RBE-compatible tests.
+      - setup_bazel_rbe
+      - run:
+          # Run "exclusive" and "manual" bazel-in-bazel integrqation tests in their own CI job
+          # as they take 8m+ to execute
+          command: yarn bazel test //integration:bazel_test //integration:bazel-schematics_test
+          no_output_timeout: 20m
+
   # Temporary job to test what will happen when we flip the Ivy flag to true
   test_ivy_aot:
     executor:
@@ -802,6 +819,9 @@ workflows:
           requires:
             - setup
       - test:
+          requires:
+            - setup
+      - test_integration_bazel:
           requires:
             - setup
       - test_ivy_aot:
